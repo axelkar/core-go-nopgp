@@ -1,0 +1,14 @@
+image: alpine/3.12
+repositories:
+  sr.ht: >
+    https://mirror.sr.ht/alpine/v3.12/sr.ht/
+    https://mirror.sr.ht/alpine/alpine%40sr.ht.rsa.pub
+    alpine@sr.ht.rsa.pub
+packages:
+  - go
+sources:
+ - https://git.sr.ht/~sircmpwn/core-go
+tasks:
+  - build: |
+      cd core-go
+      go build -v ./...
