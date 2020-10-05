@@ -9,6 +9,9 @@ packages:
 sources:
  - https://git.sr.ht/~sircmpwn/core-go
 tasks:
-  - build: |
-      cd core-go
-      go build -v ./...
+- build: |
+    cd core-go
+    go build -v ./...
+- test: |
+    cd core-go
+    go test -v ./...
