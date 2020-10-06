@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"git.sr.ht/~sircmpwn/gql.sr.ht/config"
-	"git.sr.ht/~sircmpwn/gql.sr.ht/crypto"
+	"git.sr.ht/~sircmpwn/core-go/config"
+	"git.sr.ht/~sircmpwn/core-go/crypto"
 )
 
 type GraphQLQuery struct {
@@ -46,8 +46,8 @@ func Execute(ctx context.Context, username string, svc string,
 	auth := InternalAuth{
 		Name: username,
 		// TODO: Populate these better
-		ClientID: "gql.sr.ht",
-		NodeID:   "gql.sr.ht",
+		ClientID: "core-go",
+		NodeID:   "core-go",
 	}
 	authBlob, err := json.Marshal(&auth)
 	if err != nil {

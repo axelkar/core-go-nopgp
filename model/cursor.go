@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"git.sr.ht/~sircmpwn/gql.sr.ht/crypto"
+	"git.sr.ht/~sircmpwn/core-go/crypto"
 )
 
 // TODO: Add field to prevent cursor reuse across unrelated resources
