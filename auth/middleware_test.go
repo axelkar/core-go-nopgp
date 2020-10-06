@@ -32,6 +32,8 @@ func TestNoAuthorization(t *testing.T) {
 func TestCookie(t *testing.T) {
 	mw, subctx, next := middleware()
 	ctx, mock := dbctx()
+	mockUserLookup(mock)
+
 	req, err := http.NewRequestWithContext(ctx, "POST",
 		"https://example.org/query",
 		strings.NewReader(`{"query": "query { me { id } }"}`))
@@ -49,18 +51,6 @@ func TestCookie(t *testing.T) {
 		Value: string(crypto.Encrypt(payload)),
 	})
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT`).
-		WithArgs("jdoe").
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "username", "created", "updated", "email", "user_type",
-			"url", "location", "bio", "suspension_notice",
-		}).
-			AddRow(1337, "jdoe", time.Now().UTC(), time.Now().UTC(),
-				"jdoe@example.org", "active_paying",
-				"https://example.org", nil, nil, nil))
-	mock.ExpectCommit()
-
 	resp := &TestResponse{T: t}
 	mw(resp, req)
 	assert.True(t, *next)
@@ -71,6 +61,25 @@ func TestCookie(t *testing.T) {
 	assert.Equal(t, auth.UserID, 1337)
 	assert.Equal(t, auth.Username, "jdoe")
 	assert.Equal(t, auth.Email, "jdoe@example.org")
+
+	// Test that invalid cookie fails
+	ctx, mock = dbctx()
+	req, err = http.NewRequestWithContext(ctx, "POST",
+		"https://example.org/query",
+		strings.NewReader(`{"query": "query { me { id } }"}`))
+	assert.Nil(t, err)
+	req.Header.Add("Content-Type", "application/json")
+
+	req.AddCookie(&http.Cookie{
+		Name:  "sr.ht.unified-login.v1",
+		Value: string("Invalid auth cookie"),
+	})
+
+	*next = false
+	resp = &TestResponse{T: t}
+	mw(resp, req)
+	assert.False(t, *next)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 var conf ini.File
@@ -111,6 +120,20 @@ func dbctx() (context.Context, sqlmock.Sqlmock) {
 	}
 	ctx := database.Context(context.Background(), db)
 	return ctx, mock
+}
+
+func mockUserLookup(mock sqlmock.Sqlmock) {
+	mock.ExpectBegin()
+	mock.ExpectQuery(`SELECT`).
+		WithArgs("jdoe").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "username", "created", "updated", "email", "user_type",
+			"url", "location", "bio", "suspension_notice",
+		}).
+			AddRow(1337, "jdoe", time.Now().UTC(), time.Now().UTC(),
+				"jdoe@example.org", "active_paying",
+				"https://example.org", nil, nil, nil))
+	mock.ExpectCommit()
 }
 
 type TestResponse struct {
