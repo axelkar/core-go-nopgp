@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -166,8 +167,11 @@ func MakeRouter(service string, conf ini.File, schema graphql.ExecutableSchema,
 	return router
 }
 
-// Runs the API server.
-func ListenAndServe(router chi.Router) {
-	log.Printf("running on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, router))
+func MakeServer(router chi.Router) (*http.Server, net.Listener) {
+	listen, err := net.Listen("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("Running on %s", addr)
+	return &http.Server{Handler: router}, listen
 }

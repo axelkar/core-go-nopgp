@@ -3,6 +3,7 @@ module git.sr.ht/~sircmpwn/core-go
 go 1.13
 
 require (
+	git.sr.ht/~sircmpwn/dowork v0.0.0-20201002192337-cc78e95c493c
 	git.sr.ht/~sircmpwn/getopt v0.0.0-20191230200459-23622cc906b3
 	git.sr.ht/~sircmpwn/go-bare v0.0.0-20200812160916-d2c72e1a5018
 	github.com/99designs/gqlgen v0.13.0

@@ -19,12 +19,16 @@ func Middleware(conf ini.File, service string) func(next http.Handler) http.Hand
 	svc := service
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), configCtxKey, conf)
+			ctx := Context(r.Context(), conf)
 			ctx = context.WithValue(ctx, serviceCtxKey, &svc)
 			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func Context(ctx context.Context, conf ini.File) context.Context {
+	return context.WithValue(ctx, configCtxKey, conf)
 }
 
 func ForContext(ctx context.Context) ini.File {
