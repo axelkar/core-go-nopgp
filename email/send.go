@@ -17,8 +17,6 @@ import (
 	"git.sr.ht/~sircmpwn/core-go/config"
 )
 
-var attempts int = 0
-
 // Sends an email. Blocks until it's sent or an error occurs.
 func Send(ctx context.Context, m *gomail.Message) error {
 	conf := config.ForContext(ctx)
