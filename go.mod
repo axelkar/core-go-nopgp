@@ -7,6 +7,7 @@ require (
 	git.sr.ht/~sircmpwn/go-bare v0.0.0-20200812160916-d2c72e1a5018
 	git.sr.ht/~sircmpwn/gql.sr.ht v0.0.0-20200924184215-6a1a8f1031f3
 	github.com/99designs/gqlgen v0.13.0
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/squirrel v1.4.0
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
 	github.com/go-chi/chi v4.1.2+incompatible

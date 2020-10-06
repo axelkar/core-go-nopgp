@@ -16,12 +16,15 @@ type contextKey struct {
 func Middleware(db *sql.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), dbCtxKey, db)
-
+			ctx := Context(r.Context(), db)
 			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func Context(ctx context.Context, db *sql.DB) context.Context {
+	return context.WithValue(ctx, dbCtxKey, db)
 }
 
 func ForContext(ctx context.Context) (*sql.Conn, error) {

@@ -16,11 +16,11 @@ const TokenVersion uint = 0
 type Timestamp int64
 
 func (t Timestamp) Time() time.Time {
-	return time.Unix(int64(t), 0)
+	return time.Unix(int64(t), 0).UTC()
 }
 
 func ToTimestamp(t time.Time) Timestamp {
-	return Timestamp(t.Unix())
+	return Timestamp(t.UTC().Unix())
 }
 
 type OAuth2Token struct {

@@ -686,7 +686,7 @@ func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
 
 			auth := r.Header.Get("Authorization")
 			if auth == "" {
-				authError(w, `Authorization header is required. Expected 'Authorization: Bearer <token>'`, http.StatusForbidden)
+				authError(w, `Authorization header is required. Expected 'Authorization: Bearer <token>'`, http.StatusUnauthorized)
 				return
 			}
 
@@ -722,7 +722,6 @@ func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
 				authError(w, "Invalid Authorization header", http.StatusBadRequest)
 				return
 			}
-
 		})
 	}
 }
