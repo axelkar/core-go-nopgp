@@ -139,7 +139,7 @@ func authForUsername(ctx context.Context, username string) (*AuthContext, error)
 	if auth.UserType == USER_SUSPENDED {
 		return nil, fmt.Errorf(
 			"Account suspended with the following notice: %s\nContact support",
-			auth.SuspensionNotice)
+			*auth.SuspensionNotice)
 	}
 
 	return &auth, nil
@@ -198,7 +198,7 @@ func authForOAuthClient(ctx context.Context, clientUUID string) (*AuthContext, e
 	if auth.UserType == USER_SUSPENDED {
 		return nil, fmt.Errorf(
 			"Account suspended with the following notice: %s\nContact support",
-			auth.SuspensionNotice)
+			*auth.SuspensionNotice)
 	}
 
 	return &auth, nil
@@ -530,7 +530,7 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 	if auth.UserType == USER_SUSPENDED {
 		authError(w, fmt.Sprintf(
 			"Account suspended with the following notice: %s\nContact support",
-			auth.SuspensionNotice), http.StatusForbidden)
+			*auth.SuspensionNotice), http.StatusForbidden)
 		return
 	}
 
@@ -640,7 +640,7 @@ func LegacyOAuth(bearer string, hash [64]byte, w http.ResponseWriter,
 	if auth.UserType == USER_SUSPENDED {
 		authError(w, fmt.Sprintf(
 			"Account suspended with the following notice: %s\nContact support",
-			auth.SuspensionNotice), http.StatusForbidden)
+			*auth.SuspensionNotice), http.StatusForbidden)
 		return
 	}
 
