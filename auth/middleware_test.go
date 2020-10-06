@@ -63,7 +63,7 @@ func TestCookie(t *testing.T) {
 	assert.Equal(t, auth.Email, "jdoe@example.org")
 
 	// Test that invalid cookie fails
-	ctx, mock = dbctx()
+	ctx, _ = dbctx()
 	req, err = http.NewRequestWithContext(ctx, "POST",
 		"https://example.org/query",
 		strings.NewReader(`{"query": "query { me { id } }"}`))
@@ -74,6 +74,73 @@ func TestCookie(t *testing.T) {
 		Name:  "sr.ht.unified-login.v1",
 		Value: string("Invalid auth cookie"),
 	})
+
+	*next = false
+	resp = &TestResponse{T: t}
+	mw(resp, req)
+	assert.False(t, *next)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+func TestInternal(t *testing.T) {
+	mw, subctx, next := middleware()
+	ctx, mock := dbctx()
+	mockUserLookup(mock)
+
+	req, err := http.NewRequestWithContext(ctx, "POST",
+		"https://example.org/query",
+		strings.NewReader(`{"query": "query { me { id } }"}`))
+	assert.Nil(t, err)
+	req.Header.Add("Content-Type", "application/json")
+	internalAuth := InternalAuth{
+		Name: "jdoe",
+		ClientID: "",
+		NodeID: "test.node",
+		OAuthClientUUID: "",
+	}
+	payload, err := json.Marshal(&internalAuth)
+	assert.Nil(t, err)
+	req.Header.Add("Authorization", "Internal " +
+		string(crypto.Encrypt(payload)))
+	req.RemoteAddr = "127.0.0.1"
+
+	resp := &TestResponse{T: t}
+	mw(resp, req)
+	assert.True(t, *next)
+	assert.Nil(t, mock.ExpectationsWereMet())
+
+	auth := ForContext(*subctx)
+	assert.Equal(t, auth.AuthMethod, AUTH_INTERNAL)
+	assert.Equal(t, auth.UserID, 1337)
+	assert.Equal(t, auth.Username, "jdoe")
+	assert.Equal(t, auth.Email, "jdoe@example.org")
+
+	// Expect failure when outside of internal IP network
+	ctx, _ = dbctx()
+	req, err = http.NewRequestWithContext(ctx, "POST",
+		"https://example.org/query",
+		strings.NewReader(`{"query": "query { me { id } }"}`))
+	assert.Nil(t, err)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Internal " +
+		string(crypto.Encrypt(payload)))
+	req.RemoteAddr = "1.2.3.4"
+
+	*next = false
+	resp = &TestResponse{T: t}
+	mw(resp, req)
+	assert.False(t, *next)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	// Expect failure with invalid header
+	ctx, _ = dbctx()
+	req, err = http.NewRequestWithContext(ctx, "POST",
+		"https://example.org/query",
+		strings.NewReader(`{"query": "query { me { id } }"}`))
+	assert.Nil(t, err)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Internal fakeauth")
+	req.RemoteAddr = "127.0.0.1"
 
 	*next = false
 	resp = &TestResponse{T: t}
