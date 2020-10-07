@@ -1,11 +1,14 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"time"
 
@@ -20,6 +23,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/vaughan0/go-ini"
+	"git.sr.ht/~sircmpwn/dowork"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
@@ -44,6 +48,7 @@ type Server struct {
 	router      chi.Router
 	schema      graphql.ExecutableSchema
 	service     string
+	queues      []*work.Queue
 }
 
 func NewServer(service string, conf ini.File) *Server {
@@ -57,6 +62,11 @@ func NewServer(service string, conf ini.File) *Server {
 
 func (server *Server) Router() chi.Router {
 	return server.router
+}
+
+func (server *Server) Get(pattern string, handlerFn http.HandlerFunc) *Server {
+	server.router.Get(pattern, handlerFn)
+	return server
 }
 
 func (server *Server) WithSchema(schema graphql.ExecutableSchema) *Server {
@@ -76,11 +86,9 @@ func (server *Server) WithSchema(schema graphql.ExecutableSchema) *Server {
 		complexity = 250
 	}
 
-	// TODO: Remove config parameter from EmailRecover
-	rec := EmailRecover(server.conf, config.Debug, server.service)
 	srv := handler.GraphQL(schema,
 		handler.ComplexityLimit(complexity),
-		handler.RecoverFunc(rec))
+		handler.RecoverFunc(emailRecover))
 
 	server.router.Handle("/query", srv)
 	if config.Debug {
@@ -151,11 +159,50 @@ func (server *Server) WithMiddleware(
 	return server
 }
 
-func (server *Server) MakeServer() (*http.Server, net.Listener) {
-	listen, err := net.Listen("tcp", config.Addr)
+func (server *Server) WithQueues(queues ...*work.Queue) *Server {
+	server.queues = append(server.queues, queues...)
+	for _, queue := range queues {
+		queue.Start(context.Background())
+	}
+	return server
+}
+
+func (server *Server) Run() {
+	qlisten, err := net.Listen("tcp", config.Addr)
 	if err != nil {
 		panic(err)
 	}
 	log.Printf("Running on %s", config.Addr)
-	return &http.Server{Handler: server.router}, listen
+	qserver := &http.Server{Handler: server.router}
+	go qserver.Serve(qlisten)
+
+	mux := &http.ServeMux{}
+	mux.Handle("/metrics", promhttp.Handler())
+	pserver := &http.Server{Handler: mux}
+	plisten, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("Prometheus listening on :%d", plisten.Addr().(*net.TCPAddr).Port)
+	go pserver.Serve(plisten)
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	<-sig
+	signal.Reset(os.Interrupt)
+	log.Println("SIGINT caught, initiating warm shutdown")
+	log.Println("SIGINT again to terminate immediately and drop pending requests & tasks")
+
+	log.Println("Terminating server...")
+	ctx, cancel := context.WithDeadline(context.Background(),
+		time.Now().Add(30 * time.Second))
+	qserver.Shutdown(ctx)
+	cancel()
+
+	log.Println("Terminating work queues...")
+	log.Printf("Progress available via Prometheus stats on port %d",
+		plisten.Addr().(*net.TCPAddr).Port)
+	work.Join(server.queues...)
+	qserver.Close()
+	log.Println("Terminating process.")
 }
