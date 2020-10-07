@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -51,6 +52,7 @@ type Server struct {
 	queues      []*work.Queue
 }
 
+// Creates a new common server context for a SourceHut GraphQL daemon.
 func NewServer(service string, conf ini.File) *Server {
 	server := &Server{
 		conf:    conf,
@@ -60,16 +62,17 @@ func NewServer(service string, conf ini.File) *Server {
 	return server
 }
 
+// Returns the chi Router being used for this sever.
 func (server *Server) Router() chi.Router {
 	return server.router
 }
 
-func (server *Server) Get(pattern string, handlerFn http.HandlerFunc) *Server {
-	server.router.Get(pattern, handlerFn)
-	return server
-}
-
-func (server *Server) WithSchema(schema graphql.ExecutableSchema) *Server {
+// Adds a GraphQL schema for this server. The second parameter shall be the
+// list of scopes, as strings, which are supported by this schema. This
+// function configures routes for the router; all middlewares must be
+// configured before this is called.
+func (server *Server) WithSchema(
+	schema graphql.ExecutableSchema, scopes []string) *Server {
 	server.schema = schema
 
 	var (
@@ -96,9 +99,29 @@ func (server *Server) WithSchema(schema graphql.ExecutableSchema) *Server {
 			playground.Handler("GraphQL playground", "/query"))
 	}
 	server.router.Handle("/query/metrics", promhttp.Handler())
+	server.router.Get("/query/api-meta.json", func(w http.ResponseWriter, r *http.Request) {
+		info := struct {
+			Scopes []string `json:"scopes"`
+		}{scopes}
+
+		j, err := json.Marshal(&info)
+		if err != nil {
+			panic(err)
+		}
+
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(j)
+	})
 	return server
 }
 
+// Adds the default middleware to this server, including:
+//
+// - Configuration middleware
+// - PostgresSQL connection pool
+// - Redis connection
+// - Authentication middleware
+// - Standard rigging: logging, x-real-ip, instrumentation, etc
 func (server *Server) WithDefaultMiddleware() *Server {
 	pgcs, ok := server.conf.Get(server.service, "connection-string")
 	if !ok {
@@ -148,17 +171,18 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	server.router.Use(middleware.RealIP)
 	server.router.Use(middleware.Logger)
 	server.router.Use(middleware.Timeout(timeout))
-	server.router.Use(database.Middleware(db))
 	server.router.Use(auth.Middleware(server.conf, apiconf))
 	return server
 }
 
+// Add user-defined middleware to the server
 func (server *Server) WithMiddleware(
 	middlewares ...func(http.Handler) http.Handler) *Server {
 	server.router.Use(middlewares...)
 	return server
 }
 
+// Add dowork task queues for this server to manage
 func (server *Server) WithQueues(queues ...*work.Queue) *Server {
 	server.queues = append(server.queues, queues...)
 	for _, queue := range queues {
@@ -167,6 +191,7 @@ func (server *Server) WithQueues(queues ...*work.Queue) *Server {
 	return server
 }
 
+// Run the server. Blocks until SIGINT is received.
 func (server *Server) Run() {
 	qlisten, err := net.Listen("tcp", config.Addr)
 	if err != nil {
@@ -204,5 +229,5 @@ func (server *Server) Run() {
 		plisten.Addr().(*net.TCPAddr).Port)
 	work.Join(server.queues...)
 	qserver.Close()
-	log.Println("Terminating process.")
+	log.Println("Server terminated.")
 }
