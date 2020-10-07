@@ -6,11 +6,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
-	"git.sr.ht/~sircmpwn/getopt"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/99designs/gqlgen/handler"
@@ -25,7 +23,6 @@ import (
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
-	"git.sr.ht/~sircmpwn/core-go/crypto"
 	"git.sr.ht/~sircmpwn/core-go/database"
 	"git.sr.ht/~sircmpwn/core-go/redis"
 )
@@ -42,53 +39,60 @@ var (
 	})
 )
 
-var (
-	debug bool
-	addr  string
-)
-
-// Loads the application configuration, reads options from the command line,
-// and initializes some internals based on these results.
-func LoadConfig(defaultAddr string) ini.File {
-	addr = defaultAddr
-	var (
-		config ini.File
-		err    error
-	)
-	opts, _, err := getopt.Getopts(os.Args, "b:d")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, opt := range opts {
-		switch opt.Option {
-		case 'b':
-			addr = opt.Value
-		case 'd':
-			debug = true
-		}
-	}
-
-	for _, path := range []string{"../config.ini", "/etc/sr.ht/config.ini"} {
-		config, err = ini.LoadFile(path)
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		log.Fatalf("Failed to load config file: %v", err)
-	}
-
-	crypto.InitCrypto(config)
-	return config
+type Server struct {
+	conf        ini.File
+	router      chi.Router
+	schema      graphql.ExecutableSchema
+	service     string
 }
 
-// Prepares a router with the sr.ht API middleware pre-configured. This
-// connects to PostgreSQL to rig up the database middlewares.
-func MakeRouter(service string, conf ini.File, schema graphql.ExecutableSchema,
-	middlewares ...func(http.Handler) http.Handler) chi.Router {
+func NewServer(service string, conf ini.File) *Server {
+	server := &Server{
+		conf:    conf,
+		router:  chi.NewRouter(),
+		service: service,
+	}
+	return server
+}
 
-	pgcs, ok := conf.Get(service, "connection-string")
+func (server *Server) Router() chi.Router {
+	return server.router
+}
+
+func (server *Server) WithSchema(schema graphql.ExecutableSchema) *Server {
+	server.schema = schema
+
+	var (
+		complexity int
+		err        error
+	)
+	if limit, ok := server.conf.Get(
+		server.service + "::api", "max-complexity"); ok {
+		complexity, err = strconv.Atoi(limit)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		complexity = 250
+	}
+
+	// TODO: Remove config parameter from EmailRecover
+	rec := EmailRecover(server.conf, config.Debug, server.service)
+	srv := handler.GraphQL(schema,
+		handler.ComplexityLimit(complexity),
+		handler.RecoverFunc(rec))
+
+	server.router.Handle("/query", srv)
+	if config.Debug {
+		server.router.Handle("/",
+			playground.Handler("GraphQL playground", "/query"))
+	}
+	server.router.Handle("/query/metrics", promhttp.Handler())
+	return server
+}
+
+func (server *Server) WithDefaultMiddleware() *Server {
+	pgcs, ok := server.conf.Get(server.service, "connection-string")
 	if !ok {
 		log.Fatalf("No connection string provided in config.ini")
 	}
@@ -98,7 +102,7 @@ func MakeRouter(service string, conf ini.File, schema graphql.ExecutableSchema,
 		log.Fatalf("Failed to open a database connection: %v", err)
 	}
 
-	rcs, ok := conf.Get("sr.ht", "redis-host")
+	rcs, ok := server.conf.Get("sr.ht", "redis-host")
 	if !ok {
 		rcs = "redis://"
 	}
@@ -108,10 +112,10 @@ func MakeRouter(service string, conf ini.File, schema graphql.ExecutableSchema,
 	}
 	rc := goRedis.NewClient(ropts)
 
-	apiconf := fmt.Sprintf("%s::api", service)
+	apiconf := fmt.Sprintf("%s::api", server.service)
 
 	var timeout time.Duration
-	if to, ok := conf.Get(apiconf, "max-duration"); ok {
+	if to, ok := server.conf.Get(apiconf, "max-duration"); ok {
 		timeout, err = time.ParseDuration(to)
 		if err != nil {
 			panic(err)
@@ -120,8 +124,7 @@ func MakeRouter(service string, conf ini.File, schema graphql.ExecutableSchema,
 		timeout = 3 * time.Second
 	}
 
-	router := chi.NewRouter()
-	router.Use(func(next http.Handler) http.Handler {
+	server.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			next.ServeHTTP(w, r)
@@ -131,47 +134,28 @@ func MakeRouter(service string, conf ini.File, schema graphql.ExecutableSchema,
 			requestsProcessed.Inc()
 		})
 	})
-	router.Use(config.Middleware(conf, service))
-	router.Use(database.Middleware(db))
-	router.Use(redis.Middleware(rc))
-	router.Use(middleware.RealIP)
-	router.Use(middleware.Logger)
-	router.Use(middleware.Timeout(timeout))
-	router.Use(database.Middleware(db))
-	router.Use(auth.Middleware(conf, apiconf))
-	router.Use(middlewares...)
-
-	var complexity int
-	if limit, ok := conf.Get(apiconf, "max-complexity"); ok {
-		complexity, err = strconv.Atoi(limit)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		complexity = 250
-	}
-
-	// XXX: EmailRecover doesn't need to take config now that it's on the
-	// request context
-	srv := handler.GraphQL(schema,
-		handler.ComplexityLimit(complexity),
-		handler.RecoverFunc(EmailRecover(conf, debug, service)))
-
-	router.Handle("/query", srv)
-	router.Handle("/query/metrics", promhttp.Handler())
-
-	if debug {
-		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	}
-
-	return router
+	server.router.Use(config.Middleware(server.conf, server.service))
+	server.router.Use(database.Middleware(db))
+	server.router.Use(redis.Middleware(rc))
+	server.router.Use(middleware.RealIP)
+	server.router.Use(middleware.Logger)
+	server.router.Use(middleware.Timeout(timeout))
+	server.router.Use(database.Middleware(db))
+	server.router.Use(auth.Middleware(server.conf, apiconf))
+	return server
 }
 
-func MakeServer(router chi.Router) (*http.Server, net.Listener) {
-	listen, err := net.Listen("tcp", addr)
+func (server *Server) WithMiddleware(
+	middlewares ...func(http.Handler) http.Handler) *Server {
+	server.router.Use(middlewares...)
+	return server
+}
+
+func (server *Server) MakeServer() (*http.Server, net.Listener) {
+	listen, err := net.Listen("tcp", config.Addr)
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("Running on %s", addr)
-	return &http.Server{Handler: router}, listen
+	log.Printf("Running on %s", config.Addr)
+	return &http.Server{Handler: server.router}, listen
 }
