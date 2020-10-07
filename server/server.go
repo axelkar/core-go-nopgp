@@ -13,18 +13,19 @@ import (
 	"strconv"
 	"time"
 
+	"git.sr.ht/~sircmpwn/dowork"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/99designs/gqlgen/handler"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	goRedis "github.com/go-redis/redis/v8"
-	_ "github.com/lib/pq"
+	"github.com/kavu/go_reuseport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/vaughan0/go-ini"
-	"git.sr.ht/~sircmpwn/dowork"
+	_ "github.com/lib/pq"
+	goRedis "github.com/go-redis/redis/v8"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
@@ -193,7 +194,7 @@ func (server *Server) WithQueues(queues ...*work.Queue) *Server {
 
 // Run the server. Blocks until SIGINT is received.
 func (server *Server) Run() {
-	qlisten, err := net.Listen("tcp", config.Addr)
+	qlisten, err := reuseport.Listen("tcp", config.Addr)
 	if err != nil {
 		panic(err)
 	}
