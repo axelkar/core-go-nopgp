@@ -12,6 +12,7 @@ require (
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis/v8 v8.2.3
+	github.com/kavu/go_reuseport v1.5.0
 	github.com/lib/pq v1.8.0
 	github.com/martinlindhe/base36 v1.1.0
 	github.com/prometheus/client_golang v1.7.1

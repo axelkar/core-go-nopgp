@@ -47,6 +47,8 @@ var (
 
 type Server struct {
 	conf        ini.File
+	db          *sql.DB
+	redis       *goRedis.Client
 	router      chi.Router
 	schema      graphql.ExecutableSchema
 	service     string
@@ -133,6 +135,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	if err != nil {
 		log.Fatalf("Failed to open a database connection: %v", err)
 	}
+	server.db = db
 
 	rcs, ok := server.conf.Get("sr.ht", "redis-host")
 	if !ok {
@@ -143,6 +146,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 		log.Fatalf("Invalid sr.ht::redis-host in config.ini: %e", err)
 	}
 	rc := goRedis.NewClient(ropts)
+	server.redis = rc
 
 	apiconf := fmt.Sprintf("%s::api", server.service)
 
@@ -185,9 +189,14 @@ func (server *Server) WithMiddleware(
 
 // Add dowork task queues for this server to manage
 func (server *Server) WithQueues(queues ...*work.Queue) *Server {
+	ctx := context.Background()
+	ctx = config.Context(ctx, server.conf)
+	ctx = database.Context(ctx, server.db)
+	ctx = redis.Context(ctx, server.redis)
+
 	server.queues = append(server.queues, queues...)
 	for _, queue := range queues {
-		queue.Start(context.Background())
+		queue.Start(ctx)
 	}
 	return server
 }

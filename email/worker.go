@@ -9,8 +9,6 @@ import (
 
 	"git.sr.ht/~sircmpwn/dowork"
 	gomail "gopkg.in/mail.v2"
-
-	"git.sr.ht/~sircmpwn/core-go/config"
 )
 
 var emailCtxKey = &contextKey{"email"}
@@ -22,10 +20,9 @@ type contextKey struct {
 // Returns a task which will send this email for the work queue. If the caller
 // does not need to customize the task parameters, the Enqueue function may be
 // more desirable.
-func NewTask(ctx context.Context, m *gomail.Message) *work.Task {
-	conf := config.ForContext(ctx)
+func NewTask(m *gomail.Message) *work.Task {
 	return work.NewTask(func(ctx context.Context) error {
-		return Send(config.Context(ctx, conf), m)
+		return Send(ctx, m)
 	}).Retries(10).After(func(ctx context.Context, task *work.Task) {
 		if task.Result() == nil {
 			log.Printf("MAIL TO %s: '%s' sent after %d attempts",
@@ -43,7 +40,7 @@ func NewTask(ctx context.Context, m *gomail.Message) *work.Task {
 
 // Enqueues an email for sending with the default parameters.
 func Enqueue(ctx context.Context, m *gomail.Message) {
-	ForContext(ctx).Enqueue(NewTask(ctx, m))
+	ForContext(ctx).Enqueue(NewTask(m))
 }
 
 // Creates a new email processing queue.

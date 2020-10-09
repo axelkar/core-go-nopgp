@@ -35,6 +35,14 @@ func ForContext(ctx context.Context) (*sql.Conn, error) {
 	return raw.Conn(ctx)
 }
 
+func DBForContext(ctx context.Context) *sql.DB {
+	raw, ok := ctx.Value(dbCtxKey).(*sql.DB)
+	if !ok {
+		panic(errors.New("Invalid database context"))
+	}
+	return raw
+}
+
 func WithTx(ctx context.Context, opts *sql.TxOptions, fn func(tx *sql.Tx) error) error {
 	conn, err := ForContext(ctx)
 	if err != nil {

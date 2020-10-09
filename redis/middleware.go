@@ -17,12 +17,14 @@ type contextKey struct {
 func Middleware(client *goRedis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), redisCtxKey, client)
-
-			r = r.WithContext(ctx)
+			r = r.WithContext(Context(r.Context(), client))
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func Context(ctx context.Context, client *goRedis.Client) context.Context {
+	return context.WithValue(ctx, redisCtxKey, client)
 }
 
 func ForContext(ctx context.Context) *goRedis.Client {
