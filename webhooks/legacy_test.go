@@ -77,10 +77,8 @@ func TestDelivery(t *testing.T) {
 	mock.ExpectQuery(`SELECT .* FROM user_webhook_subscription`).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "created", "url", "events",
-		}).AddRow(
-			1337, time.Now().UTC(),
-			srv.URL + "/webhook",
-			"profile:update")).
+		}).AddRow(1337, time.Now().UTC(),
+			srv.URL + "/webhook", "profile:update")).
 		WithArgs(42, sqlmock.AnyArg()) // Any => events LIKE %profile:update%
 	mock.ExpectCommit()
 
