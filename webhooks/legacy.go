@@ -230,6 +230,7 @@ func deliverPayload(ctx context.Context, name, url string,
 			Set("response", string(body)).
 			Set("response_status", resp.StatusCode).
 			Set("response_headers", sb.String()).
+			Where("id = ?", deliveryID).
 			RunWith(tx).
 			ExecContext(ctx)
 		return err

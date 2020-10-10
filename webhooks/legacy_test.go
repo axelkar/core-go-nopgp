@@ -103,7 +103,7 @@ func TestDelivery(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE user_webhook_delivery`).
-		WithArgs("Thanks!", 200, sqlmock.AnyArg()) // Any => response headers
+		WithArgs("Thanks!", 200, sqlmock.AnyArg(), 4096) // Any => response headers
 	mock.ExpectCommit()
 
 	ctx = database.Context(context.Background(), db)
