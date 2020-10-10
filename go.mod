@@ -3,7 +3,7 @@ module git.sr.ht/~sircmpwn/core-go
 go 1.13
 
 require (
-	git.sr.ht/~sircmpwn/dowork v0.0.0-20201006201820-f2599e406ecb
+	git.sr.ht/~sircmpwn/dowork v0.0.0-20201009195117-58f54dd4c3e8
 	git.sr.ht/~sircmpwn/getopt v0.0.0-20191230200459-23622cc906b3
 	git.sr.ht/~sircmpwn/go-bare v0.0.0-20200812160916-d2c72e1a5018
 	github.com/99designs/gqlgen v0.13.0
@@ -12,6 +12,7 @@ require (
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis/v8 v8.2.3
+	github.com/google/uuid v1.0.0
 	github.com/kavu/go_reuseport v1.5.0
 	github.com/lib/pq v1.8.0
 	github.com/martinlindhe/base36 v1.1.0
@@ -23,7 +24,7 @@ require (
 	github.com/vektah/gqlparser v1.3.1
 	github.com/vektah/gqlparser/v2 v2.1.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
-	golang.org/x/sys v0.0.0-20201007082116-8445cc04cbdf // indirect
+	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/mail.v2 v2.3.1
 )

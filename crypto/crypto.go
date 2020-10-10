@@ -85,6 +85,8 @@ func HMACVerify(payload []byte, signature []byte) bool {
 	return hmac.Equal(expected, signature)
 }
 
+// Signs the payload for a webhook, returning respectively the values for the
+// X-Payload-Nonce and X-Payload-Signature headers.
 func SignWebhook(payload []byte) (string, string) {
 	var nonceSeed [8]byte
 	_, err := rand.Read(nonceSeed[:])
@@ -96,4 +98,12 @@ func SignWebhook(payload []byte) (string, string) {
 	signature := base64.StdEncoding.EncodeToString(
 		Sign(append(payload, []byte(nonce)...)))
 	return nonce, signature
+}
+
+func VerifyWebhook(payload []byte, nonce, signature string) bool {
+	s, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return false
+	}
+	return Verify(append(payload, []byte(nonce)...), s)
 }

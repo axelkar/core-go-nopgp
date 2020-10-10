@@ -33,6 +33,12 @@ func TestSignWebhook(t *testing.T) {
 	assert.True(t, valid)
 }
 
+func TestVerifyWebhook(t *testing.T) {
+	payload := []byte("Hello world!")
+	nonce, signature := SignWebhook(payload)
+	assert.True(t, VerifyWebhook(payload, nonce, signature))
+}
+
 func TestSign(t *testing.T) {
 	payload := []byte("Hello world!")
 	signature := Sign(payload)

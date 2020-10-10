@@ -69,9 +69,9 @@ func (mf *ModelFields) Anonymous() []*FieldMap {
 }
 
 type Model interface {
-	Alias()  string
+	Alias() string
 	Fields() *ModelFields
-	Table()  string
+	Table() string
 }
 
 func Select(ctx context.Context, cols ...interface{}) sq.SelectBuilder {

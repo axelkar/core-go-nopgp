@@ -19,13 +19,13 @@ import (
 	"github.com/99designs/gqlgen/handler"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	goRedis "github.com/go-redis/redis/v8"
 	"github.com/kavu/go_reuseport"
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/vaughan0/go-ini"
-	_ "github.com/lib/pq"
-	goRedis "github.com/go-redis/redis/v8"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
@@ -46,13 +46,13 @@ var (
 )
 
 type Server struct {
-	conf        ini.File
-	db          *sql.DB
-	redis       *goRedis.Client
-	router      chi.Router
-	schema      graphql.ExecutableSchema
-	service     string
-	queues      []*work.Queue
+	conf    ini.File
+	db      *sql.DB
+	redis   *goRedis.Client
+	router  chi.Router
+	schema  graphql.ExecutableSchema
+	service string
+	queues  []*work.Queue
 }
 
 // Creates a new common server context for a SourceHut GraphQL daemon.
@@ -83,7 +83,7 @@ func (server *Server) WithSchema(
 		err        error
 	)
 	if limit, ok := server.conf.Get(
-		server.service + "::api", "max-complexity"); ok {
+		server.service+"::api", "max-complexity"); ok {
 		complexity, err = strconv.Atoi(limit)
 		if err != nil {
 			panic(err)
@@ -230,7 +230,7 @@ func (server *Server) Run() {
 
 	log.Println("Terminating server...")
 	ctx, cancel := context.WithDeadline(context.Background(),
-		time.Now().Add(30 * time.Second))
+		time.Now().Add(30*time.Second))
 	qserver.Shutdown(ctx)
 	cancel()
 

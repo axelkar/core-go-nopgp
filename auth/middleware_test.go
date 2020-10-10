@@ -93,14 +93,14 @@ func TestInternal(t *testing.T) {
 	assert.Nil(t, err)
 	req.Header.Add("Content-Type", "application/json")
 	internalAuth := InternalAuth{
-		Name: "jdoe",
-		ClientID: "",
-		NodeID: "test.node",
+		Name:            "jdoe",
+		ClientID:        "",
+		NodeID:          "test.node",
 		OAuthClientUUID: "",
 	}
 	payload, err := json.Marshal(&internalAuth)
 	assert.Nil(t, err)
-	req.Header.Add("Authorization", "Internal " +
+	req.Header.Add("Authorization", "Internal "+
 		string(crypto.Encrypt(payload)))
 	req.RemoteAddr = "127.0.0.1"
 
@@ -122,7 +122,7 @@ func TestInternal(t *testing.T) {
 		strings.NewReader(`{"query": "query { me { id } }"}`))
 	assert.Nil(t, err)
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Internal " +
+	req.Header.Add("Authorization", "Internal "+
 		string(crypto.Encrypt(payload)))
 	req.RemoteAddr = "1.2.3.4"
 

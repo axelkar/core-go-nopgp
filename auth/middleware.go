@@ -91,7 +91,7 @@ func authForUsername(ctx context.Context, username string) (*AuthContext, error)
 	var auth AuthContext
 	if err := database.WithTx(ctx, &sql.TxOptions{
 		Isolation: 0,
-		ReadOnly: true,
+		ReadOnly:  true,
 	}, func(tx *sql.Tx) error {
 		var (
 			err  error
@@ -149,7 +149,7 @@ func authForOAuthClient(ctx context.Context, clientUUID string) (*AuthContext, e
 	var auth AuthContext
 	if err := database.WithTx(ctx, &sql.TxOptions{
 		Isolation: 0,
-		ReadOnly: true,
+		ReadOnly:  true,
 	}, func(tx *sql.Tx) error {
 		var (
 			err  error
@@ -399,7 +399,7 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 func LookupUser(ctx context.Context, username string, user *AuthContext) error {
 	return database.WithTx(ctx, &sql.TxOptions{
 		Isolation: 0,
-		ReadOnly: true,
+		ReadOnly:  true,
 	}, func(tx *sql.Tx) error {
 		var (
 			err  error
@@ -578,7 +578,7 @@ func LegacyOAuth(bearer string, hash [64]byte, w http.ResponseWriter,
 	)
 	if err := database.WithTx(r.Context(), &sql.TxOptions{
 		Isolation: 0,
-		ReadOnly: true,
+		ReadOnly:  true,
 	}, func(tx *sql.Tx) error {
 		var (
 			err  error
