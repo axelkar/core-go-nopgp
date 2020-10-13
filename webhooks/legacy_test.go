@@ -63,8 +63,8 @@ func TestDelivery(t *testing.T) {
 	queue := NewLegacyQueue()
 	q := sq.
 		Select().
-		From("user_webhook_subscription").
-		Where(`user_id = ?`, 42)
+		From("user_webhook_subscription sub").
+		Where(`sub.user_id = ?`, 42)
 	queue.Schedule(q, "user", "profile:update", []byte(`{"hello": "world"}`))
 
 	db, mock, err := sqlmock.New()
@@ -74,9 +74,9 @@ func TestDelivery(t *testing.T) {
 
 	// Lookup phase
 	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT .* FROM user_webhook_subscription`).
+	mock.ExpectQuery(`SELECT .* FROM user_webhook_subscription sub`).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "created", "url", "events",
+			"sub.id", "sub.created", "sub.url", "sub.events",
 		}).AddRow(1337, time.Now().UTC(),
 			srv.URL + "/webhook", "profile:update")).
 		WithArgs(42, sqlmock.AnyArg()) // Any => events LIKE %profile:update%

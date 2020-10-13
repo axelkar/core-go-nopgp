@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"git.sr.ht/~sircmpwn/dowork"
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	sq "github.com/Masterminds/squirrel"
 
 	"git.sr.ht/~sircmpwn/core-go/crypto"
 	"git.sr.ht/~sircmpwn/core-go/database"
@@ -44,7 +44,8 @@ func NewLegacyQueue() *LegacyQueue {
 // The select builder should not return any columns, i.e. the caller should use
 // squirrel.Select() with no parameters. The caller should prepare FROM and any
 // WHERE clauses which are necessary to refine the subscriber list (e.g. by
-// affected resource ID).
+// affected resource ID). The caller must alias the webhook table to "sub", e.g.
+// sq.Select().From("my_webhook_subscription sub").
 //
 // Name shall be the prefix of the webhook tables, e.g. "user" for
 // "user_webhook_{delivery,subscription}".
@@ -80,6 +81,7 @@ func (lq *LegacyQueue) Schedule(q sq.SelectBuilder,
 			}
 			return nil
 		}); err != nil {
+			log.Println("Failed to enqueue webhooks: %v", err)
 			return err
 		}
 
@@ -106,11 +108,12 @@ func fetchSubscriptions(ctx context.Context, q sq.SelectBuilder,
 			rows *sql.Rows
 		)
 		if rows, err = q.
-			Columns("id", "created", "url", "events").
-			Where(sq.Like{"events": "%" + event + "%"}).
+			Columns("sub.id", "sub.created", "sub.url", "sub.events").
+			Where(sq.Like{"sub.events": "%" + event + "%"}).
+			PlaceholderFormat(sq.Dollar).
 			RunWith(tx).
 			QueryContext(ctx); err != nil {
-			panic(err)
+			return err
 		}
 		defer rows.Close()
 
@@ -161,15 +164,21 @@ func (lq *LegacyQueue) queueStage2(ctx context.Context, tx *sql.Tx,
 	headers.Write(&sb)
 
 	var deliveryID int
-	sq.Insert(name+"_webhook_delivery").
+	err := sq.
+		Insert(name+"_webhook_delivery").
 		Columns("uuid", "created", "event", "url",
 			"payload", "payload_headers", "response_status",
 			"subscription_id").
-		Values(deliveryUUID, "NOW() at time zone 'utc'", event, sub.URL,
-			string(payload), sb.String(), -2, sub.ID).
+		Values(deliveryUUID,
+			sq.Expr("NOW() at time zone 'utc'"),
+			event, sub.URL, string(payload), sb.String(), -2, sub.ID).
 		Suffix(`RETURNING (id)`).
+		PlaceholderFormat(sq.Dollar).
 		RunWith(tx).
 		ScanContext(ctx, &deliveryID)
+	if err != nil {
+		return nil, err
+	}
 
 	return work.NewTask(func(ctx context.Context) error {
 		return deliverPayload(ctx, name, sub.URL, headers, payload, deliveryID)
@@ -226,11 +235,13 @@ func deliverPayload(ctx context.Context, name, url string,
 	if err = database.WithTx(ctx, nil, func(tx *sql.Tx) error {
 		var sb strings.Builder
 		resp.Header.Write(&sb)
-		_, err := sq.Update(name+"_webhook_delivery").
+		_, err := sq.
+			Update(name+"_webhook_delivery").
 			Set("response", string(body)).
 			Set("response_status", resp.StatusCode).
 			Set("response_headers", sb.String()).
 			Where("id = ?", deliveryID).
+			PlaceholderFormat(sq.Dollar).
 			RunWith(tx).
 			ExecContext(ctx)
 		return err
