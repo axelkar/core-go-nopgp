@@ -184,10 +184,10 @@ func (lq *LegacyQueue) queueStage2(ctx context.Context, tx *sql.Tx,
 		return deliverPayload(ctx, name, sub.URL, headers, payload, deliveryID)
 	}).Retries(5).After(func(ctx context.Context, task *work.Task) {
 		if task.Result() == nil {
-			log.Printf("%s: delivery complete after %d attempts",
+			log.Printf("%s: webhook delivery complete after %d attempts",
 				deliveryUUID, task.Attempts())
 		} else {
-			log.Printf("%s: delivery failed after %d attempts: %v",
+			log.Printf("%s: webhook delivery failed after %d attempts: %v",
 				deliveryUUID, task.Attempts(), task.Result())
 		}
 	}), nil
