@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"context"
+	"database/sql/driver"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -32,6 +33,27 @@ internal-ipnet=127.0.0.1/24,::1/64`))
 		panic(err)
 	}
 	crypto.InitCrypto(conf)
+}
+
+type argContains struct {
+	matches []string
+}
+
+func ArgMatchesAll(matches... string) *argContains {
+	return &argContains{matches}
+}
+
+func (ac *argContains) Match(v driver.Value) bool {
+	str, ok := v.(string)
+	if !ok {
+		return false
+	}
+	for _, match := range ac.matches {
+		if !strings.Contains(str, match) {
+			return false
+		}
+	}
+	return true
 }
 
 func TestDelivery(t *testing.T) {
@@ -101,7 +123,15 @@ func TestDelivery(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE user_webhook_delivery`).
-		WithArgs("Thanks!", 200, sqlmock.AnyArg(), 4096) // Any => response headers
+		WithArgs("Thanks!", 200,
+			sqlmock.AnyArg(), // Response headers
+			ArgMatchesAll(
+				"X-Payload-Signature",
+				"X-Payload-Nonce",
+				"X-Webhook-Event",
+				"X-Webhook-Delivery",
+			), // Final request headers
+			4096)
 	mock.ExpectCommit()
 
 	ctx = database.Context(context.Background(), db)
