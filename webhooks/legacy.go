@@ -81,7 +81,7 @@ func (lq *LegacyQueue) Schedule(q sq.SelectBuilder,
 			}
 			return nil
 		}); err != nil {
-			log.Println("Failed to enqueue webhooks: %v", err)
+			log.Printf("Failed to enqueue webhooks: %v", err)
 			return err
 		}
 
