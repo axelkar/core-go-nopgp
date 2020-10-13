@@ -3,7 +3,7 @@ module git.sr.ht/~sircmpwn/core-go
 go 1.13
 
 require (
-	git.sr.ht/~sircmpwn/dowork v0.0.0-20201009195117-58f54dd4c3e8
+	git.sr.ht/~sircmpwn/dowork v0.0.0-20201013160733-35ca012e4dc8
 	git.sr.ht/~sircmpwn/getopt v0.0.0-20191230200459-23622cc906b3
 	git.sr.ht/~sircmpwn/go-bare v0.0.0-20200812160916-d2c72e1a5018
 	github.com/99designs/gqlgen v0.13.0
@@ -24,7 +24,7 @@ require (
 	github.com/vektah/gqlparser v1.3.1
 	github.com/vektah/gqlparser/v2 v2.1.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
-	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
+	golang.org/x/sys v0.0.0-20201013132646-2da7054afaeb // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/mail.v2 v2.3.1
 )
