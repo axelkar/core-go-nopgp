@@ -209,7 +209,7 @@ func deliverPayload(ctx context.Context, name, url string,
 			err, work.ErrDoNotReattempt)
 	}
 
-	req.Header = headers
+	req.Header = make(http.Header)
 	for key, values := range headers {
 		for _, value := range values {
 			req.Header.Add(key, value)
@@ -218,6 +218,9 @@ func deliverPayload(ctx context.Context, name, url string,
 	nonce, sig := crypto.SignWebhook(payload)
 	req.Header.Add("X-Payload-Nonce", nonce)
 	req.Header.Add("X-Payload-Signature", sig)
+
+	var ours strings.Builder
+	req.Header.Write(&ours)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -233,13 +236,14 @@ func deliverPayload(ctx context.Context, name, url string,
 	}
 
 	if err = database.WithTx(ctx, nil, func(tx *sql.Tx) error {
-		var sb strings.Builder
-		resp.Header.Write(&sb)
+		var theirs strings.Builder
+		resp.Header.Write(&theirs)
 		_, err := sq.
 			Update(name+"_webhook_delivery").
 			Set("response", string(body)).
 			Set("response_status", resp.StatusCode).
-			Set("response_headers", sb.String()).
+			Set("response_headers", theirs.String()).
+			Set("payload_headers", ours.String()).
 			Where("id = ?", deliveryID).
 			PlaceholderFormat(sq.Dollar).
 			RunWith(tx).
