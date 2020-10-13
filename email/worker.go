@@ -25,12 +25,12 @@ func NewTask(m *gomail.Message) *work.Task {
 		return Send(ctx, m)
 	}).Retries(10).After(func(ctx context.Context, task *work.Task) {
 		if task.Result() == nil {
-			log.Printf("MAIL TO %s: '%s' sent after %d attempts",
+			log.Printf("Mail to %s: '%s' sent after %d attempts",
 				strings.Join(m.GetHeader("To"), ";"),
 				strings.Join(m.GetHeader("Subject"), ";"),
 				task.Attempts())
 		} else {
-			log.Printf("MAIL TO %s: '%s' failed after %d attempts: %v",
+			log.Printf("Mail to %s: '%s' failed after %d attempts: %v",
 				strings.Join(m.GetHeader("To"), ";"),
 				strings.Join(m.GetHeader("Subject"), ";"),
 				task.Attempts(), task.Result())
