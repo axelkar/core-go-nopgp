@@ -50,3 +50,16 @@ func LoadConfig(defaultAddr string) ini.File {
 	crypto.InitCrypto(config)
 	return config
 }
+
+func GetOrigin(conf ini.File, svc string, external bool) string {
+	if external {
+		origin, _ := conf.Get(svc, "origin")
+		return origin
+	}
+	origin, ok := conf.Get(svc, "internal-origin")
+	if ok {
+		return origin
+	}
+	origin, _ = conf.Get(svc, "origin")
+	return origin
+}
