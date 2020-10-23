@@ -267,7 +267,7 @@ func internalAuth(internalNet []*net.IPNet, payload []byte,
 		}
 	}
 	if !ok {
-		authError(w, "Invalid source IP for internal auth", http.StatusUnauthorized)
+		authError(w, fmt.Sprintf("Invalid source IP %s for internal auth", ip), http.StatusUnauthorized)
 		return
 	}
 
