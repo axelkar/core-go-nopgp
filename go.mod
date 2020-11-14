@@ -9,6 +9,8 @@ require (
 	github.com/99designs/gqlgen v0.13.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/squirrel v1.4.0
+	github.com/emersion/go-message v0.13.1-0.20201112194930-f77964fe28bd // indirect
+	github.com/emersion/go-textwrapper v0.0.0-20200911093747-65d896831594 // indirect
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis/v8 v8.2.3
@@ -26,5 +28,4 @@ require (
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 	golang.org/x/sys v0.0.0-20201013132646-2da7054afaeb // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
-	gopkg.in/mail.v2 v2.3.1
 )

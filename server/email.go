@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/mail"
 	"runtime"
+	"strings"
+	gomail "net/mail"
 
 	"github.com/99designs/gqlgen/graphql"
-	gomail "gopkg.in/mail.v2"
+	"github.com/emersion/go-message/mail"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
@@ -48,31 +49,26 @@ func emailRecover(ctx context.Context, _origErr interface{}) error {
 		return fmt.Errorf("internal system error")
 	}
 
+	var header mail.Header
+	header.SetSubject(fmt.Sprintf("[%s] GraphQL query error: %v",
+		config.ServiceName(ctx), origErr))
+
 	conf := config.ForContext(ctx)
 	to, ok := conf.Get("mail", "error-to")
 	if !ok {
 		return fmt.Errorf("internal system error")
 	}
-	from, _ := conf.Get("mail", "error-from")
-
-	m := gomail.NewMessage()
-	sender, err := mail.ParseAddress(from)
+	rcpt, err := gomail.ParseAddress(to)
 	if err != nil {
-		log.Fatalf("Failed to parse sender address")
+		panic(errors.New("Failed to parse sender address"))
 	}
-	m.SetAddressHeader("From", sender.Address, sender.Name)
-	recipient, err := mail.ParseAddress(to)
-	if err != nil {
-		log.Fatalf("Failed to parse recipient address")
-	}
-	m.SetAddressHeader("To", recipient.Address, recipient.Name)
-	m.SetHeader("Subject", fmt.Sprintf(
-		"[%s] GraphQL query error: %v", config.ServiceName(ctx), origErr))
+	addr := mail.Address(*rcpt)
+	header.SetAddressList("To", []*mail.Address{&addr})
 
 	quser := auth.ForContext(ctx)
 	octx := graphql.GetOperationContext(ctx)
-
-	m.SetBody("text/plain", fmt.Sprintf(`Error occured processing GraphQL request:
+	reader := strings.NewReader(
+		fmt.Sprintf(`Error occured processing GraphQL request:
 
 %v
 
@@ -84,6 +80,6 @@ The following stack trace was produced:
 
 %s`, origErr, quser.Username, quser.Email, octx.RawQuery, string(stack[:i])))
 
-	email.Enqueue(ctx, m)
+	email.EnqueueStd(ctx, header, reader, nil)
 	return fmt.Errorf("internal system error")
 }

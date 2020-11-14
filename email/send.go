@@ -1,58 +1,46 @@
 package email
 
 import (
-	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/binary"
-	"errors"
 	"fmt"
-	"os"
+	"io"
+	"net/mail"
 	"strconv"
-	"time"
 
-	"github.com/martinlindhe/base36"
-	gomail "gopkg.in/mail.v2"
+	"github.com/emersion/go-sasl"
+	"github.com/emersion/go-smtp"
+	_ "github.com/emersion/go-message/charset"
 
 	"git.sr.ht/~sircmpwn/core-go/config"
 )
 
 // Sends an email. Blocks until it's sent or an error occurs.
-func Send(ctx context.Context, m *gomail.Message) error {
+func Send(ctx context.Context, msg io.Reader, rcpts []string) error {
 	conf := config.ForContext(ctx)
 
 	portStr, ok := conf.Get("mail", "smtp-port")
 	if !ok {
-		return errors.New("internal system error")
+		panic(fmt.Errorf("[mail]smtp-port unset"))
 	}
-	port, _ := strconv.Atoi(portStr)
-	host, _ := conf.Get("mail", "smtp-host")
-	user, _ := conf.Get("mail", "smtp-user")
-	pass, _ := conf.Get("mail", "smtp-password")
-
-	m.SetHeader("Message-ID", generateMessageID())
-	m.SetDateHeader("Date", time.Now().UTC())
-
-	d := gomail.NewDialer(host, port, user, pass)
-	return d.DialAndSend(m)
-}
-
-// Generates an RFC 2822-compliant Message-Id based on the informational draft
-// "Recommendations for generating Message IDs", for lack of a better
-// authoritative source.
-func generateMessageID() string {
-	var (
-		now   bytes.Buffer
-		nonce []byte = make([]byte, 8)
-	)
-	binary.Write(&now, binary.BigEndian, time.Now().UnixNano())
-	rand.Read(nonce)
-	hostname, err := os.Hostname()
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		hostname = "localhost"
+		panic(fmt.Errorf("Unable to parse [mail]smtp-port (must be integer)"))
 	}
-	return fmt.Sprintf("<%s.%s@%s>",
-		base36.EncodeBytes(now.Bytes()),
-		base36.EncodeBytes(nonce),
-		hostname)
+
+	host, ok1 := conf.Get("mail", "smtp-host")
+	user, ok2 := conf.Get("mail", "smtp-user")
+	pass, ok3 := conf.Get("mail", "smtp-password")
+	from, ok4 := conf.Get("mail", "smtp-from")
+	if !ok1 || !ok2 || !ok3 || !ok4 {
+		panic(fmt.Errorf("Missing SMTP configuration options"))
+	}
+
+	sender, err := mail.ParseAddress(from)
+	if err != nil {
+		panic(err)
+	}
+
+	auth := sasl.NewPlainClient("", user, pass)
+	return smtp.SendMail(fmt.Sprintf("%s:%d", host, port),
+		auth, sender.Address, rcpts, msg)
 }
