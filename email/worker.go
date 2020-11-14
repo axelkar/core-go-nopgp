@@ -95,6 +95,14 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 		panic(err)
 	}
 
+	var rcpts []string
+	for _, addr := range to {
+		rcpts = append(rcpts, addr.Address)
+	}
+	for _, addr := range cc {
+		rcpts = append(rcpts, addr.Address)
+	}
+
 	header.GenerateMessageID()
 	header.SetDate(time.Now().UTC())
 	header.SetAddressList("From", from)
@@ -123,34 +131,47 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 		panic(errors.New("Failed to load private key for email signature"))
 	}
 
-	var signedHeader mail.Header
-	signedHeader.SetContentType("text/plain", nil)
+	var (
+		buf       bytes.Buffer
+		cleartext io.WriteCloser
+	)
 
-	var buf bytes.Buffer
-	cleartext, err := pgpmail.Sign(&buf, header.Header.Header, entity, nil)
-	if err != nil {
-		log.Fatal(err)
+	if rcptKey != nil {
+		keyring, err = openpgp.ReadArmoredKeyRing(strings.NewReader(*rcptKey))
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(keyring) != 1 {
+			return errors.New("Expected user PGP key to contain one key")
+		}
+		rcptEntity := keyring[0]
+
+		cleartext, err = pgpmail.Encrypt(&buf, header.Header.Header,
+			[]*openpgp.Entity{rcptEntity}, entity, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer cleartext.Close()
+	} else {
+		cleartext, err = pgpmail.Sign(&buf, header.Header.Header,
+			entity, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer cleartext.Close()
 	}
 
-	body, err := mail.CreateSingleInlineWriter(cleartext, signedHeader)
+	var inlineHeader mail.Header
+	inlineHeader.SetContentType("text/plain", nil)
+	body, err := mail.CreateSingleInlineWriter(cleartext, inlineHeader)
 	if err != nil {
 		panic(err)
 	}
+	defer body.Close()
 
 	_, err = io.Copy(body, bodyReader)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	cleartext.Close()
-	body.Close()
-
-	var rcpts []string
-	for _, addr := range to {
-		rcpts = append(rcpts, addr.Address)
-	}
-	for _, addr := range cc {
-		rcpts = append(rcpts, addr.Address)
 	}
 
 	Enqueue(ctx, &buf, rcpts)
