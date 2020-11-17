@@ -118,6 +118,12 @@ func (server *Server) WithSchema(
 	return server
 }
 
+var remoteAddrCtxKey = &contextKey{"remoteAddr"}
+
+type contextKey struct {
+	name string
+}
+
 // Adds the default middleware to this server, including:
 //
 // - Configuration middleware
@@ -177,7 +183,22 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	server.router.Use(middleware.Logger)
 	server.router.Use(middleware.Timeout(timeout))
 	server.router.Use(auth.Middleware(server.conf, apiconf))
+	server.router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), remoteAddrCtxKey, r.RemoteAddr)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
+	})
 	return server
+}
+
+func RemoteAddr(ctx context.Context) string {
+	raw, ok := ctx.Value(remoteAddrCtxKey).(string)
+	if !ok {
+		panic(fmt.Errorf("Invalid authentication context"))
+	}
+	return raw
 }
 
 // Add user-defined middleware to the server
