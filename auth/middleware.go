@@ -145,6 +145,7 @@ func authForUsername(ctx context.Context, username string) (*AuthContext, error)
 	return &auth, nil
 }
 
+// NOTE: This only works for meta.sr.ht (should we move it?)
 func authForOAuthClient(ctx context.Context, clientUUID string) (*AuthContext, error) {
 	var auth AuthContext
 	if err := database.WithTx(ctx, &sql.TxOptions{
@@ -166,7 +167,8 @@ func authForOAuthClient(ctx context.Context, clientUUID string) (*AuthContext, e
 			}).
 			From(`"oauth2_client" client`).
 			Join(`"user" u ON u.id = client.owner_id`).
-			Where(`client.client_uuid = ?`, clientUUID)
+			Where(`client.client_uuid = ?`, clientUUID).
+			Where(`client.revoked = false`)
 		if rows, err = query.RunWith(tx).Query(); err != nil {
 			panic(err)
 		}
