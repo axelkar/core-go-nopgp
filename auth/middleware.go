@@ -68,6 +68,9 @@ type AuthContext struct {
 	SuspensionNotice *string
 	AuthMethod       int
 
+	// Only set for meta.sr.ht-api
+	PGPKey *string
+
 	// Only filled out if AuthMethod == AUTH_INTERNAL
 	InternalAuth InternalAuth
 
@@ -417,6 +420,11 @@ func LookupUser(ctx context.Context, username string, user *AuthContext) error {
 			}).
 			From(`"user" u`).
 			Where(`u.username = ?`, username)
+		if config.ServiceName(ctx) == "meta.sr.ht" {
+			query = query.
+				LeftJoin(`pgpkey p ON p.id = u.pgp_key_id`).
+				Column(`p.key`)
+		}
 		if rows, err = query.RunWith(tx).Query(); err != nil {
 			return err
 		}
@@ -428,7 +436,7 @@ func LookupUser(ctx context.Context, username string, user *AuthContext) error {
 			}
 			return FetchMetaProfile(ctx, username, user)
 		}
-		if err = rows.Scan(
+		cols := []interface{}{
 			&user.UserID, &user.Username,
 			&user.Created, &user.Updated,
 			&user.Email,
@@ -436,7 +444,12 @@ func LookupUser(ctx context.Context, username string, user *AuthContext) error {
 			&user.URL,
 			&user.Location,
 			&user.Bio,
-			&user.SuspensionNotice); err != nil {
+			&user.SuspensionNotice,
+		}
+		if config.ServiceName(ctx) == "meta.sr.ht" {
+			cols = append(cols, &user.PGPKey)
+		}
+		if err = rows.Scan(cols...); err != nil {
 			return err
 		}
 		if rows.Next() {
