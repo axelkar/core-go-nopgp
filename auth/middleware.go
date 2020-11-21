@@ -125,9 +125,8 @@ func authForUsername(ctx context.Context, username string) (*AuthContext, error)
 			panic(err)
 		}
 		if rows.Next() {
-			// TODO: Fetch user info from meta if necessary
 			if err := rows.Err(); err != nil {
-				panic(err)
+				panic(err) // Invariant
 			}
 			panic(errors.New("Multiple matching user accounts; invariant broken"))
 		}
