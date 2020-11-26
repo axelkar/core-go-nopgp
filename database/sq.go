@@ -134,7 +134,12 @@ func Apply(m Model, input map[string]interface{}) sq.UpdateBuilder {
 					reflect.Indirect(rv).Interface())
 			}
 		} else {
-			panic(fmt.Errorf("TODO"))
+			if !rv.IsValid() {
+				panic(fmt.Errorf("Invariant violated (unsetting non-nullable field)"))
+			} else {
+				pv.Set(rv)
+				update = update.Set(WithAlias(m.Alias(), f.SQL), rv.Interface())
+			}
 		}
 	}
 
