@@ -60,5 +60,9 @@ func WithTx(ctx context.Context, opts *sql.TxOptions, fn func(tx *sql.Tx) error)
 		}
 		tx.Commit()
 	}()
-	return fn(tx)
+	err = fn(tx)
+	if err != nil {
+		tx.Rollback()
+	}
+	return err
 }

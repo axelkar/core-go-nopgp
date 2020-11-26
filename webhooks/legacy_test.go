@@ -131,7 +131,8 @@ func TestDelivery(t *testing.T) {
 				"X-Webhook-Event",
 				"X-Webhook-Delivery",
 			), // Final request headers
-			4096)
+			4096).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	ctx = database.Context(context.Background(), db)
