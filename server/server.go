@@ -94,7 +94,8 @@ func (server *Server) WithSchema(
 
 	srv := handler.GraphQL(schema,
 		handler.ComplexityLimit(complexity),
-		handler.RecoverFunc(emailRecover))
+		handler.RecoverFunc(emailRecover),
+		handler.UploadMaxSize(1073741824)) // 1 GiB (TODO: configurable?)
 
 	server.router.Handle("/query", srv)
 	if config.Debug {
