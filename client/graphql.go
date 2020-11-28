@@ -44,9 +44,9 @@ func Execute(ctx context.Context, username string, svc string,
 	}
 	req.Header.Add("Content-Type", "application/json")
 	auth := InternalAuth{
-		Name: username,
-		// TODO: Populate these better
-		ClientID: "core-go",
+		Name:     username,
+		ClientID: config.ServiceName(ctx),
+		// TODO: Populate this:
 		NodeID:   "core-go",
 	}
 	authBlob, err := json.Marshal(&auth)
