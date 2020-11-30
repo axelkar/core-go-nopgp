@@ -31,8 +31,11 @@ func Execute(ctx context.Context, username string, svc string,
 	}
 
 	conf := config.ForContext(ctx)
-	origin, ok := conf.Get(svc, "origin")
-	if !ok {
+	origin, _ := conf.Get(svc, "api-origin")
+	if origin == "" {
+		origin = config.GetOrigin(conf, svc, false)
+	}
+	if origin == "" {
 		panic(fmt.Errorf("No %s origin specified in config.ini", svc))
 	}
 
