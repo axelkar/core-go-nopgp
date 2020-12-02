@@ -13,7 +13,7 @@ func Internal(ctx context.Context, obj interface{},
 	next graphql.Resolver) (interface{}, error) {
 
 	if auth.ForContext(ctx).AuthMethod != auth.AUTH_INTERNAL {
-		return nil, fmt.Errorf("Access denied")
+		return nil, fmt.Errorf("Internal auth access denied")
 	}
 
 	return next(ctx)
@@ -47,5 +47,5 @@ func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 		panic(fmt.Errorf("Unknown auth method for access check"))
 	}
 
-	return nil, fmt.Errorf("Access denied")
+	return nil, fmt.Errorf("Access denied for invalid auth method")
 }
