@@ -25,8 +25,7 @@ func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 	authctx := auth.ForContext(ctx)
 
 	switch authctx.AuthMethod {
-	case auth.AUTH_INTERNAL:
-	case auth.AUTH_COOKIE:
+	case auth.AUTH_INTERNAL, auth.AUTH_COOKIE:
 		return next(ctx)
 	case auth.AUTH_OAUTH_LEGACY:
 		if kind == "RO" {
