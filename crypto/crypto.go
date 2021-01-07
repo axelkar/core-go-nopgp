@@ -63,12 +63,15 @@ func Encrypt(payload []byte) []byte {
 	return msg
 }
 
-func Decrypt(payload []byte) []byte {
+func DecryptWithoutExpiration(payload []byte) []byte {
 	return fernet.VerifyAndDecrypt(payload,
 		time.Duration(0), []*fernet.Key{fernetKey})
 }
 
 func DecryptWithExpiration(payload []byte, expiry time.Duration) []byte {
+	if expiry == 0 {
+		panic(fmt.Errorf("DecryptWithExpiration given expiration of zero. Use DecryptWithoutExpiration if you really meant it."))
+	}
 	return fernet.VerifyAndDecrypt(payload, expiry, []*fernet.Key{fernetKey})
 }
 

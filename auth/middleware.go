@@ -215,7 +215,7 @@ type AuthCookie struct {
 
 func cookieAuth(cookie *http.Cookie, w http.ResponseWriter,
 	r *http.Request, next http.Handler) {
-	payload := crypto.Decrypt([]byte(cookie.Value))
+	payload := crypto.DecryptWithoutExpiration([]byte(cookie.Value))
 	if payload == nil {
 		authError(w, "Invalid authentication cookie", http.StatusForbidden)
 		return

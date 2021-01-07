@@ -57,7 +57,7 @@ func TestEncrypt(t *testing.T) {
 	assert.NotNil(t, enc)
 	assert.NotEqual(t, enc, []byte("Hello, world!"))
 
-	dec := Decrypt(enc)
+	dec := DecryptWithoutExpiration(enc)
 	assert.NotNil(t, dec)
 	assert.Equal(t, dec, []byte("Hello, world!"))
 }

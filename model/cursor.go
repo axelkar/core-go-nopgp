@@ -20,7 +20,7 @@ func (cur *Cursor) UnmarshalGQL(v interface{}) error {
 	if !ok {
 		return fmt.Errorf("cursor must be strings")
 	}
-	plain := crypto.Decrypt([]byte(enc))
+	plain := crypto.DecryptWithoutExpiration([]byte(enc))
 	if plain == nil {
 		return fmt.Errorf("Invalid cursor")
 	}
