@@ -19,8 +19,8 @@ type FieldMap struct {
 type ModelFields struct {
 	Fields []*FieldMap
 
-	byGQL map[string]*FieldMap
-	bySQL map[string]*FieldMap
+	byGQL map[string][]*FieldMap
+	bySQL map[string][]*FieldMap
 	anon  []*FieldMap
 }
 
@@ -29,19 +29,25 @@ func (mf *ModelFields) buildCache() {
 		return
 	}
 
-	mf.byGQL = make(map[string]*FieldMap)
-	mf.bySQL = make(map[string]*FieldMap)
+	mf.byGQL = make(map[string][]*FieldMap)
+	mf.bySQL = make(map[string][]*FieldMap)
 	for _, f := range mf.Fields {
 		if f.GQL != "" {
-			mf.byGQL[f.GQL] = f
+			if _, ok := mf.byGQL[f.GQL]; !ok {
+				mf.byGQL[f.GQL] = nil
+			}
+			mf.byGQL[f.GQL] = append(mf.byGQL[f.GQL], f)
 		} else {
 			mf.anon = append(mf.anon, f)
 		}
-		mf.bySQL[f.SQL] = f
+		if _, ok := mf.bySQL[f.SQL]; !ok {
+			mf.bySQL[f.SQL] = nil
+		}
+		mf.bySQL[f.SQL] = append(mf.bySQL[f.SQL], f)
 	}
 }
 
-func (mf *ModelFields) GQL(name string) (*FieldMap, bool) {
+func (mf *ModelFields) GQL(name string) ([]*FieldMap, bool) {
 	mf.buildCache()
 	if f, ok := mf.byGQL[name]; !ok {
 		return nil, false
@@ -50,7 +56,7 @@ func (mf *ModelFields) GQL(name string) (*FieldMap, bool) {
 	}
 }
 
-func (mf *ModelFields) SQL(name string) (*FieldMap, bool) {
+func (mf *ModelFields) SQL(name string) ([]*FieldMap, bool) {
 	mf.buildCache()
 	if f, ok := mf.bySQL[name]; !ok {
 		return nil, false
@@ -74,6 +80,11 @@ type Model interface {
 	Table() string
 }
 
+type ExtendedModel interface {
+	Model
+	Select(q sq.SelectBuilder) sq.SelectBuilder
+}
+
 func Select(ctx context.Context, cols ...interface{}) sq.SelectBuilder {
 	q := sq.Select().PlaceholderFormat(sq.Dollar)
 	for _, col := range cols {
@@ -83,7 +94,11 @@ func Select(ctx context.Context, cols ...interface{}) sq.SelectBuilder {
 		case []string:
 			q = q.Columns(col...)
 		case Model:
-			q = q.Columns(Columns(ctx, col)...)
+			if em, ok := col.(ExtendedModel); ok {
+				q = em.Select(q.Columns(Columns(ctx, col)...))
+			} else {
+				q = q.Columns(Columns(ctx, col)...)
+			}
 		default:
 			panic(fmt.Errorf("Unknown selectable type %T", col))
 		}
@@ -112,10 +127,14 @@ func Apply(m Model, input map[string]interface{}) sq.UpdateBuilder {
 	}()
 
 	for field, value := range input {
-		f, ok := m.Fields().GQL(field)
+		fields, ok := m.Fields().GQL(field)
 		if !ok {
 			continue
 		}
+		if len(fields) != 1 {
+			panic(fmt.Errorf("Apply cannot be used with composite fields"))
+		}
+		f := fields[0]
 
 		var (
 			pv reflect.Value = reflect.Indirect(reflect.ValueOf(f.Ptr))

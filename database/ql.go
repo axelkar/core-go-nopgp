@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/lib/pq"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -46,8 +47,10 @@ func Scan(ctx context.Context, m Model) []interface{} {
 
 	var fields []interface{}
 	for _, qlField := range qlFields {
-		if field, ok := m.Fields().GQL(qlField.Name); ok {
-			fields = append(fields, field.Ptr)
+		if gqlFields, ok := m.Fields().GQL(qlField.Name); ok {
+			for _, field := range gqlFields {
+				fields = append(fields, field.Ptr)
+			}
 		}
 	}
 
@@ -75,8 +78,14 @@ func Columns(ctx context.Context, m Model) []string {
 
 	var columns []string
 	for _, gql := range fields {
-		if field, ok := m.Fields().GQL(gql.Name); ok {
-			columns = append(columns, WithAlias(m.Alias(), field.SQL))
+		if sqlFields, ok := m.Fields().GQL(gql.Name); ok {
+			for _, field := range sqlFields {
+				sql := field.SQL
+				if !strings.ContainsRune(sql, '.') {
+					sql = WithAlias(m.Alias(), field.SQL)
+				}
+				columns = append(columns, sql)
+			}
 		}
 	}
 
