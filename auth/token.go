@@ -54,7 +54,7 @@ func DecodeToken(token string) *OAuth2Token {
 	mac := payload[len(payload)-32:]
 	payload = payload[:len(payload)-32]
 	if crypto.HMACVerify(payload, mac) == false {
-		log.Printf("Invalid bearer token: HMAC verification failed (MAC: [%d]%s; payload: [%d]%s)",
+		log.Printf("Invalid bearer token: HMAC verification failed (MAC: [%d]%s; payload: [%d]%s",
 			len(mac), hex.EncodeToString(mac), len(payload), hex.EncodeToString(payload))
 		return nil
 	}

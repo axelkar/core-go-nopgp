@@ -277,7 +277,7 @@ func internalAuth(internalNet []*net.IPNet, payload []byte,
 
 	payload = crypto.DecryptWithExpiration(payload, 30*time.Second)
 	if payload == nil {
-		authError(w, "Invalid Authorization header", http.StatusForbidden)
+		authError(w, "Invalid Authorization header (encryption error)", http.StatusForbidden)
 		return
 	}
 
@@ -287,7 +287,7 @@ func internalAuth(internalNet []*net.IPNet, payload []byte,
 	}
 
 	if internalAuth.ClientID == "" || internalAuth.NodeID == "" {
-		authError(w, "Invalid Authorization header", http.StatusForbidden)
+		authError(w, "Invalid Authorization header (missing Client ID or Node ID)", http.StatusForbidden)
 	}
 
 	var auth *AuthContext
@@ -372,7 +372,7 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 				$1, $2, $3, $4, $5, $6, $7
 			)
 			ON CONFLICT DO NOTHING
-			RETURNING (
+			RETURNING
 				id,
 				created,
 				updated,
@@ -382,13 +382,12 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 				url,
 				location,
 				bio,
-				suspension_notice
-			);`,
-			profile.Username, profile.Email, profile.UserType, profile.URL,
-			profile.Location, profile.Bio, profile.SuspensionNotice)
+				suspension_notice;`,
+			&profile.Username, &profile.Email, &profile.UserType, &profile.URL,
+			&profile.Location, &profile.Bio, &profile.SuspensionNotice)
 
 		// TODO: Register webhooks
-		if err := row.Scan(&user.UserID, user.Created, user.Updated,
+		if err := row.Scan(&user.UserID, &user.Created, &user.Updated,
 			&user.Username, &user.Email, &user.UserType, &user.URL,
 			&user.Location, &user.Bio, &user.SuspensionNotice); err != nil {
 			if err == sql.ErrNoRows {
