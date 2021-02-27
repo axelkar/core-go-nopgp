@@ -14,6 +14,8 @@ git.sr.ht/~sircmpwn/getopt v0.0.0-20191230200459-23622cc906b3 h1:4wDp4BKF7NQqoh7
 git.sr.ht/~sircmpwn/getopt v0.0.0-20191230200459-23622cc906b3/go.mod h1:wMEGFFFNuPos7vHmWXfszqImLppbc0wEhh6JBfJIUgw=
 git.sr.ht/~sircmpwn/go-bare v0.0.0-20200812160916-d2c72e1a5018 h1:89QMorzx6ML69PKPoayL3HuSfb7WqAlxD1dZ7DyzD0k=
 git.sr.ht/~sircmpwn/go-bare v0.0.0-20200812160916-d2c72e1a5018/go.mod h1:BVJwbDfVjCjoFiKrhkei6NdGcZYpkDkdyCdg1ukytRA=
+git.sr.ht/~sircmpwn/go-bare v0.0.0-20210227202403-5dae5c48f917 h1:/pfEvB399XDXksu4vyjfNTytWn/nbbKiNhvjtpgc4pY=
+git.sr.ht/~sircmpwn/go-bare v0.0.0-20210227202403-5dae5c48f917/go.mod h1:BVJwbDfVjCjoFiKrhkei6NdGcZYpkDkdyCdg1ukytRA=
 github.com/99designs/gqlgen v0.13.0 h1:haLTcUp3Vwp80xMVEg5KRNwzfUrgFdRmtBY8fuB8scA=
 github.com/99designs/gqlgen v0.13.0/go.mod h1:NV130r6f4tpRWuAI+zsrSdooO/eWUv+Gyyoi3rEfXIk=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
