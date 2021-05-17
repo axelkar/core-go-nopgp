@@ -61,12 +61,15 @@ func WithTx(ctx context.Context, opts *sql.TxOptions, fn func(tx *sql.Tx) error)
 	}()
 	err = fn(tx)
 	if err != nil {
-		err = tx.Rollback()
+		err := tx.Rollback()
+		if err != nil && err != sql.ErrTxDone {
+			panic(err)
+		}
 	} else {
-		err = tx.Commit()
-	}
-	if err == sql.ErrTxDone {
-		err = nil
+		err := tx.Commit()
+		if err != nil && err != sql.ErrTxDone {
+			panic(err)
+		}
 	}
 	return err
 }
