@@ -354,6 +354,8 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 
 	profile := result.Data.Me
 	return database.WithTx(ctx, nil, func(tx *sql.Tx) error {
+		// TODO: Make the database representation consistent with this
+		ut := strings.ToLower(profile.UserType)
 		row := tx.QueryRowContext(ctx, `
 			INSERT INTO "user" (
 				created,
@@ -383,7 +385,7 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 				location,
 				bio,
 				suspension_notice;`,
-			&profile.Username, &profile.Email, &profile.UserType, &profile.URL,
+			&profile.Username, &profile.Email, &ut, &profile.URL,
 			&profile.Location, &profile.Bio, &profile.SuspensionNotice)
 
 		// TODO: Register webhooks
