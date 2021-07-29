@@ -1,7 +1,7 @@
-image: alpine/3.12
+image: alpine/3.14
 repositories:
   sr.ht: >
-    https://mirror.sr.ht/alpine/v3.12/sr.ht/
+    https://mirror.sr.ht/alpine/v3.14/sr.ht/
     https://mirror.sr.ht/alpine/alpine%40sr.ht.rsa.pub
     alpine@sr.ht.rsa.pub
 packages:
