@@ -12,6 +12,6 @@ import (
 func main() {
 	conf := config.LoadConfig(":1111")
 	crypto.InitCrypto(conf)
-	tok := auth.DecodeToken(os.Args[1])
+	tok := auth.DecodeBearerToken(os.Args[1])
 	fmt.Printf("%+v\n", tok)
 }

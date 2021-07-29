@@ -27,75 +27,75 @@ network-key=tbuG-7Vh44vrDq1L_HKWkHnWrDOtJhEkPKPiauaLeuk=`))
 }
 
 func TestEncode(t *testing.T) {
-	ot := &OAuth2Token{
+	bt := &BearerToken{
 		Version:  TokenVersion,
 		Expires:  ToTimestamp(time.Now().Add(30 * time.Minute)),
 		Grants:   "",
 		ClientID: "",
 		Username: "jdoe",
 	}
-	token := ot.Encode()
+	token := bt.Encode()
 	bytes, err := base64.RawStdEncoding.DecodeString(token)
 	assert.Nil(t, err)
 
 	mac := bytes[len(bytes)-32:]
 	payload := bytes[:len(bytes)-32]
-	assert.True(t, crypto.HMACVerify(payload, mac))
+	assert.True(t, crypto.BearerVerify(payload, mac))
 
-	var ot2 OAuth2Token
-	err = bare.Unmarshal(payload, &ot2)
+	var bt2 BearerToken
+	err = bare.Unmarshal(payload, &bt2)
 	assert.Nil(t, err)
-	assert.Equal(t, ot.Version, ot2.Version)
-	assert.Equal(t, ot.Expires, ot2.Expires)
-	assert.Equal(t, ot.Grants, ot2.Grants)
-	assert.Equal(t, ot.ClientID, ot2.ClientID)
-	assert.Equal(t, ot.Username, ot2.Username)
+	assert.Equal(t, bt.Version, bt2.Version)
+	assert.Equal(t, bt.Expires, bt2.Expires)
+	assert.Equal(t, bt.Grants, bt2.Grants)
+	assert.Equal(t, bt.ClientID, bt2.ClientID)
+	assert.Equal(t, bt.Username, bt2.Username)
 }
 
 func TestDecode(t *testing.T) {
-	ot := &OAuth2Token{
+	bt := &BearerToken{
 		Version:  TokenVersion,
 		Expires:  ToTimestamp(time.Now().Add(30 * time.Minute)),
 		Grants:   "",
 		ClientID: "",
 		Username: "jdoe",
 	}
-	token := ot.Encode()
-	ot2 := DecodeToken(token)
-	assert.NotNil(t, ot2)
-	assert.Equal(t, ot.Version, ot2.Version)
-	assert.Equal(t, ot.Expires, ot2.Expires)
-	assert.Equal(t, ot.Grants, ot2.Grants)
-	assert.Equal(t, ot.ClientID, ot2.ClientID)
-	assert.Equal(t, ot.Username, ot2.Username)
+	token := bt.Encode()
+	bt2 := DecodeBearerToken(token)
+	assert.NotNil(t, bt2)
+	assert.Equal(t, bt.Version, bt2.Version)
+	assert.Equal(t, bt.Expires, bt2.Expires)
+	assert.Equal(t, bt.Grants, bt2.Grants)
+	assert.Equal(t, bt.ClientID, bt2.ClientID)
+	assert.Equal(t, bt.Username, bt2.Username)
 
 	// Expired token:
-	ot = &OAuth2Token{
+	bt = &BearerToken{
 		Version:  TokenVersion,
 		Expires:  ToTimestamp(time.Now().Add(-30 * time.Minute)),
 		Grants:   "",
 		ClientID: "",
 		Username: "jdoe",
 	}
-	token = ot.Encode()
-	ot2 = DecodeToken(token)
-	assert.Nil(t, ot2)
+	token = bt.Encode()
+	bt2 = DecodeBearerToken(token)
+	assert.Nil(t, bt2)
 
 	// Invalid MAC:
-	ot = &OAuth2Token{
+	bt = &BearerToken{
 		Version:  TokenVersion,
 		Expires:  ToTimestamp(time.Now().Add(30 * time.Minute)),
 		Grants:   "",
 		ClientID: "",
 		Username: "jdoe",
 	}
-	plain, err := bare.Marshal(ot)
+	plain, err := bare.Marshal(bt)
 	assert.Nil(t, err)
-	mac := crypto.HMAC(plain)
-	ot.Username = "rdoe"
-	plain, err = bare.Marshal(ot)
+	mac := crypto.BearerHMAC(plain)
+	bt.Username = "rdoe"
+	plain, err = bare.Marshal(bt)
 	assert.Nil(t, err)
 	token = base64.RawStdEncoding.EncodeToString(append(plain, mac...))
-	ot2 = DecodeToken(token)
-	assert.Nil(t, ot2)
+	bt2 = DecodeBearerToken(token)
+	assert.Nil(t, bt2)
 }

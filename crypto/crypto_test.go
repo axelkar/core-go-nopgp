@@ -79,13 +79,13 @@ func TestEncryptWithExpire(t *testing.T) {
 	assert.Nil(t, dec)
 }
 
-func TestHMAC(t *testing.T) {
+func TestBearerHMAC(t *testing.T) {
 	payload := []byte("Hello, world!")
-	mac := HMAC(payload)
+	mac := BearerHMAC(payload)
 
-	valid := HMACVerify(payload, mac)
+	valid := BearerVerify(payload, mac)
 	assert.True(t, valid)
 
-	valid = HMACVerify([]byte("Something else"), mac)
+	valid = BearerVerify([]byte("Something else"), mac)
 	assert.False(t, valid)
 }

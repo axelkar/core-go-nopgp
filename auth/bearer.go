@@ -23,7 +23,7 @@ func ToTimestamp(t time.Time) Timestamp {
 	return Timestamp(t.UTC().Unix())
 }
 
-type OAuth2Token struct {
+type BearerToken struct {
 	Version  uint
 	Expires  Timestamp
 	Grants   string
@@ -31,16 +31,16 @@ type OAuth2Token struct {
 	Username string
 }
 
-func (ot *OAuth2Token) Encode() string {
-	plain, err := bare.Marshal(ot)
+func (bt *BearerToken) Encode() string {
+	plain, err := bare.Marshal(bt)
 	if err != nil {
 		panic(err)
 	}
-	mac := crypto.HMAC(plain)
+	mac := crypto.BearerHMAC(plain)
 	return base64.RawStdEncoding.EncodeToString(append(plain, mac...))
 }
 
-func DecodeToken(token string) *OAuth2Token {
+func DecodeBearerToken(token string) *BearerToken {
 	payload, err := base64.RawStdEncoding.DecodeString(token)
 	if err != nil {
 		log.Printf("Invalid bearer token: invalid base64 %e", err)
@@ -53,25 +53,25 @@ func DecodeToken(token string) *OAuth2Token {
 
 	mac := payload[len(payload)-32:]
 	payload = payload[:len(payload)-32]
-	if crypto.HMACVerify(payload, mac) == false {
+	if crypto.BearerVerify(payload, mac) == false {
 		log.Printf("Invalid bearer token: HMAC verification failed (MAC: [%d]%s; payload: [%d]%s",
 			len(mac), hex.EncodeToString(mac), len(payload), hex.EncodeToString(payload))
 		return nil
 	}
 
-	var ot OAuth2Token
-	err = bare.Unmarshal(payload, &ot)
+	var bt BearerToken
+	err = bare.Unmarshal(payload, &bt)
 	if err != nil {
 		log.Printf("Invalid bearer token: BARE unmarshal failed: %e", err)
 		return nil
 	}
-	if ot.Version != TokenVersion {
+	if bt.Version != TokenVersion {
 		log.Printf("Invalid bearer token: invalid token version")
 		return nil
 	}
-	if time.Now().UTC().After(ot.Expires.Time()) {
+	if time.Now().UTC().After(bt.Expires.Time()) {
 		log.Printf("Invalid bearer token: token expired")
 		return nil
 	}
-	return &ot
+	return &bt
 }

@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	privateKey ed25519.PrivateKey
-	publicKey  ed25519.PublicKey
-	macKey     []byte
-	fernetKey  *fernet.Key
+	webhookSk ed25519.PrivateKey
+	webhookPk ed25519.PublicKey
+	bearerKey []byte
+	fernetKey *fernet.Key
 )
 
 func InitCrypto(config ini.File) {
@@ -31,8 +31,8 @@ func InitCrypto(config ini.File) {
 	if err != nil {
 		log.Fatalf("base64 decode webhooks private key: %v", err)
 	}
-	privateKey = ed25519.NewKeyFromSeed(seed)
-	publicKey, _ = privateKey.Public().(ed25519.PublicKey)
+	webhookSk = ed25519.NewKeyFromSeed(seed)
+	webhookPk, _ = webhookSk.Public().(ed25519.PublicKey)
 
 	b64fernet, ok := config.Get("sr.ht", "network-key")
 	if !ok {
@@ -42,17 +42,17 @@ func InitCrypto(config ini.File) {
 	if err != nil {
 		log.Fatalf("Load Fernet network encryption key: %v", err)
 	}
-	mac := hmac.New(sha256.New, privateKey)
+	mac := hmac.New(sha256.New, webhookSk)
 	mac.Write([]byte("sr.ht HMAC key"))
-	macKey = mac.Sum(nil)
+	bearerKey = mac.Sum(nil)
 }
 
 func Sign(payload []byte) []byte {
-	return ed25519.Sign(privateKey, payload)
+	return ed25519.Sign(webhookSk, payload)
 }
 
 func Verify(payload, signature []byte) bool {
-	return ed25519.Verify(publicKey, payload, signature)
+	return ed25519.Verify(webhookPk, payload, signature)
 }
 
 func Encrypt(payload []byte) []byte {
@@ -75,14 +75,14 @@ func DecryptWithExpiration(payload []byte, expiry time.Duration) []byte {
 	return fernet.VerifyAndDecrypt(payload, expiry, []*fernet.Key{fernetKey})
 }
 
-func HMAC(payload []byte) []byte {
-	mac := hmac.New(sha256.New, macKey)
+func BearerHMAC(payload []byte) []byte {
+	mac := hmac.New(sha256.New, bearerKey)
 	mac.Write(payload)
 	return mac.Sum(nil)
 }
 
-func HMACVerify(payload []byte, signature []byte) bool {
-	mac := hmac.New(sha256.New, macKey)
+func BearerVerify(payload []byte, signature []byte) bool {
+	mac := hmac.New(sha256.New, bearerKey)
 	mac.Write(payload)
 	expected := mac.Sum(nil)
 	return hmac.Equal(expected, signature)

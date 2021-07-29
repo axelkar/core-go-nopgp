@@ -75,7 +75,7 @@ type AuthContext struct {
 	InternalAuth InternalAuth
 
 	// Only filled out if AuthMethod == AUTH_OAUTH2
-	OAuth2Token *OAuth2Token
+	BearerToken *BearerToken
 	Access      map[string]string
 }
 
@@ -503,15 +503,15 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 	)
 	wg.Add(2)
 
-	ot := DecodeToken(token)
-	if ot == nil {
+	bt := DecodeBearerToken(token)
+	if bt == nil {
 		authError(w, `Invalid or expired OAuth 2.0 bearer token`, http.StatusForbidden)
 		return
 	}
 
 	go func() {
 		defer wg.Done()
-		err = LookupUser(r.Context(), ot.Username, &auth)
+		err = LookupUser(r.Context(), bt.Username, &auth)
 		if err != nil {
 			log.Printf("LookupUser: %e", err)
 			atomic.AddInt32(&tempErr, 1)
@@ -523,7 +523,7 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 	go func() {
 		defer wg.Done()
 		isRevoked, err := LookupTokenRevocation(r.Context(),
-			ot.Username, hash, ot.ClientID)
+			bt.Username, hash, bt.ClientID)
 		if err != nil {
 			log.Printf("LookupTokenRevocation: %e", err)
 			atomic.AddInt32(&tempErr, 1)
@@ -550,11 +550,11 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 	}
 
 	auth.AuthMethod = AUTH_OAUTH2
-	auth.OAuth2Token = ot
+	auth.BearerToken = bt
 
-	if ot.Grants != "" {
+	if bt.Grants != "" {
 		auth.Access = make(map[string]string)
-		for _, grant := range strings.Split(ot.Grants, " ") {
+		for _, grant := range strings.Split(bt.Grants, " ") {
 			var (
 				service string
 				scope   string
