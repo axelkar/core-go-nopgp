@@ -1,13 +1,17 @@
 package auth
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"git.sr.ht/~sircmpwn/go-bare"
 
+	"git.sr.ht/~sircmpwn/core-go/config"
 	"git.sr.ht/~sircmpwn/core-go/crypto"
 )
 
@@ -74,4 +78,35 @@ func DecodeBearerToken(token string) *BearerToken {
 		return nil
 	}
 	return &bt
+}
+
+func DecodeGrants(ctx context.Context, grants string) map[string]string {
+	if grants == "" {
+		// All permissions
+		return nil
+	}
+	accessMap := make(map[string]string)
+	for _, grant := range strings.Split(grants, " ") {
+		var (
+			service string
+			scope   string
+			access  string
+		)
+		parts := strings.Split(grant, "/")
+		if len(parts) != 2 {
+			panic(fmt.Errorf("OAuth grant '%s' without service/scope format", grant))
+		}
+		service = parts[0]
+		parts = strings.Split(parts[1], ":")
+		scope = parts[0]
+		if len(parts) == 1 {
+			access = "RO"
+		} else {
+			access = parts[1]
+		}
+		if service == config.ServiceName(ctx) {
+			accessMap[scope] = access
+		}
+	}
+	return accessMap
 }

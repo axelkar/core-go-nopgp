@@ -21,7 +21,6 @@ func Internal(ctx context.Context, obj interface{},
 
 func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 	scope string, kind string) (interface{}, error) {
-
 	authctx := auth.ForContext(ctx)
 
 	switch authctx.AuthMethod {
@@ -32,6 +31,11 @@ func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 			// Only legacy tokens with "*" scopes ever get this far
 			return next(ctx)
 		}
+	case auth.AUTH_WEBHOOK:
+		if kind != "RO" {
+			return nil, fmt.Errorf("Access to read/write resolver denied for webhook")
+		}
+		fallthrough
 	case auth.AUTH_OAUTH2:
 		if authctx.Access == nil {
 			return next(ctx)

@@ -53,6 +53,7 @@ const (
 	AUTH_OAUTH2       = iota
 	AUTH_COOKIE       = iota
 	AUTH_INTERNAL     = iota
+	AUTH_WEBHOOK      = iota
 )
 
 type AuthContext struct {
@@ -74,9 +75,10 @@ type AuthContext struct {
 	// Only filled out if AuthMethod == AUTH_INTERNAL
 	InternalAuth InternalAuth
 
-	// Only filled out if AuthMethod == AUTH_OAUTH2
+	// Only filled out if AuthMethod == AUTH_OAUTH2 or AUTH_WEBHOOK
 	BearerToken *BearerToken
 	Access      map[string]string
+	TokenHash   [64]byte
 }
 
 func authError(w http.ResponseWriter, reason string, code int) {
@@ -551,32 +553,8 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 
 	auth.AuthMethod = AUTH_OAUTH2
 	auth.BearerToken = bt
-
-	if bt.Grants != "" {
-		auth.Access = make(map[string]string)
-		for _, grant := range strings.Split(bt.Grants, " ") {
-			var (
-				service string
-				scope   string
-				access  string
-			)
-			parts := strings.Split(grant, "/")
-			if len(parts) != 2 {
-				panic(fmt.Errorf("OAuth grant '%s' without service/scope format", grant))
-			}
-			service = parts[0]
-			parts = strings.Split(parts[1], ":")
-			scope = parts[0]
-			if len(parts) == 1 {
-				access = "RO"
-			} else {
-				access = parts[1]
-			}
-			if service == config.ServiceName(r.Context()) {
-				auth.Access[scope] = access
-			}
-		}
-	}
+	auth.TokenHash = hash
+	auth.Access = DecodeGrants(r.Context(), bt.Grants)
 
 	ctx := context.WithValue(r.Context(), userCtxKey, &auth)
 	r = r.WithContext(ctx)
@@ -669,6 +647,32 @@ func LegacyOAuth(bearer string, hash [64]byte, w http.ResponseWriter,
 	ctx := context.WithValue(r.Context(), userCtxKey, &auth)
 	r = r.WithContext(ctx)
 	next.ServeHTTP(w, r)
+}
+
+// Returns an auth context configured for webhook delivery. This auth
+// configuration is not possible during a normal GraphQL query, and is only
+// used during webhook execution.
+//
+// The "ctx" parameter should be a webhook context, and the "auth" parameter
+// should be the authentication context from the request which caused the
+// webhook to be fired.
+func WebhookAuth(ctx context.Context, auth *AuthContext,
+	tokenHash [64]byte, grants string, clientID *string,
+	expires time.Time) (context.Context, error) {
+	if time.Now().UTC().After(expires) {
+		return nil, fmt.Errorf("The authentication token used to create this webhook has expired")
+	}
+
+	whAuth := *auth
+	whAuth.AuthMethod = AUTH_WEBHOOK
+	whAuth.TokenHash = tokenHash
+	whAuth.Access = DecodeGrants(ctx, grants)
+	whAuth.BearerToken = &BearerToken{}
+	if clientID != nil {
+		whAuth.BearerToken.ClientID = *clientID
+	}
+
+	return context.WithValue(ctx, userCtxKey, &whAuth), nil
 }
 
 func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
