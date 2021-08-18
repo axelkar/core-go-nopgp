@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/executor"
@@ -83,4 +84,25 @@ func (webhook *WebhookContext) Exec(ctx context.Context,
 		panic(err)
 	}
 	return payload, nil
+}
+
+// Validates the given query against the provided schema and returns any errors
+// should they be found, or nil if the query passes validation.
+func Validate(schema graphql.ExecutableSchema, query string) error {
+	// XXX: We would create less garbage if we ran the validator ourselves
+	// instead of letting gqlgen do it for us via CreateOperationContext
+	exec := executor.New(schema)
+	params := graphql.RawParams{
+		Query: query,
+		ReadTime: graphql.TraceTiming{
+			Start: graphql.Now(),
+			End:   graphql.Now(),
+		},
+	}
+	ctx := graphql.StartOperationTrace(context.TODO())
+	_, errors := exec.CreateOperationContext(ctx, &params)
+	if errors != nil {
+		return fmt.Errorf("Error validating webhook query: %s", errors.Error())
+	}
+	return nil
 }
