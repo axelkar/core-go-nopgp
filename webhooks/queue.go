@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,7 +14,6 @@ import (
 
 	"git.sr.ht/~sircmpwn/dowork"
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/99designs/gqlgen/graphql/executor"
 	"github.com/google/uuid"
 	sq "github.com/Masterminds/squirrel"
 
@@ -162,41 +159,9 @@ func (queue *WebhookQueue) queueStage2(ctx context.Context,
 	headers.Set("X-Webhook-Event", webhook.Event)
 	headers.Set("X-Webhook-Delivery", webhook.PayloadUUID.String())
 
-	sub := webhook.Subscription
-	tslice, err := hex.DecodeString(sub.TokenHash)
+	payload, err := webhook.Exec(ctx, queue.Schema)
 	if err != nil {
-		panic(err)
-	}
-
-	var tokenHash [64]byte
-	copy(tokenHash[:], tslice)
-	ctx, err = auth.WebhookAuth(ctx, webhook.User,
-		tokenHash, sub.Grants, sub.ClientID, sub.Expires)
-	if err != nil {
-		// TODO: This codepath can occur when the token has expired, and we may
-		// want to communicate this to the user.
 		return nil, err
-	}
-
-	exec := executor.New(queue.Schema)
-	params := graphql.RawParams{
-		Query: sub.Query,
-		ReadTime: graphql.TraceTiming{
-			Start: graphql.Now(),
-			End:   graphql.Now(),
-		},
-	}
-	ctx = graphql.StartOperationTrace(ctx)
-	rc, errors := exec.CreateOperationContext(ctx, &params)
-	if errors != nil {
-		panic(errors)
-	}
-	ctx = graphql.WithOperationContext(ctx, rc)
-	var resp graphql.ResponseHandler
-	resp, ctx = exec.DispatchOperation(ctx, rc)
-	payload, err := json.Marshal(resp(ctx))
-	if err != nil {
-		panic(err)
 	}
 
 	var deliveryID int
@@ -204,7 +169,7 @@ func (queue *WebhookQueue) queueStage2(ctx context.Context,
 		Insert("gql_"+webhook.Name+"_wh_delivery").
 		Columns("uuid", "date", "event", "subscription_id", "request_body").
 		Values(webhook.PayloadUUID, sq.Expr("NOW() at time zone 'utc'"),
-			webhook.Event, sub.ID, string(payload)).
+			webhook.Event, webhook.Subscription.ID, string(payload)).
 		Suffix(`RETURNING (id)`).
 		PlaceholderFormat(sq.Dollar).
 		RunWith(tx).
