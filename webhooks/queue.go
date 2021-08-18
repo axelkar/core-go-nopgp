@@ -179,8 +179,7 @@ func (queue *WebhookQueue) queueStage2(ctx context.Context,
 	}
 
 	return work.NewTask(func(ctx context.Context) error {
-		queue.deliverPayload(ctx, webhook, headers, payload, deliveryID)
-		return nil
+		return queue.deliverPayload(ctx, webhook, headers, payload, deliveryID)
 	}).Retries(5).After(func(ctx context.Context, task *work.Task) {
 		if task.Result() == nil {
 			log.Printf("%s: webhook delivery complete after %d attempts",
