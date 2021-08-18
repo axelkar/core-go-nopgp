@@ -46,11 +46,12 @@ var (
 )
 
 type Server struct {
+	Schema graphql.ExecutableSchema
+
 	conf    ini.File
 	db      *sql.DB
 	redis   *goRedis.Client
 	router  chi.Router
-	schema  graphql.ExecutableSchema
 	service string
 	queues  []*work.Queue
 }
@@ -76,7 +77,7 @@ func (server *Server) Router() chi.Router {
 // configured before this is called.
 func (server *Server) WithSchema(
 	schema graphql.ExecutableSchema, scopes []string) *Server {
-	server.schema = schema
+	server.Schema = schema
 
 	var (
 		complexity int
@@ -119,6 +120,7 @@ func (server *Server) WithSchema(
 	return server
 }
 
+var serverCtxKey = &contextKey{"server"}
 var remoteAddrCtxKey = &contextKey{"remoteAddr"}
 
 type contextKey struct {
@@ -186,7 +188,8 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	server.router.Use(auth.Middleware(server.conf, apiconf))
 	server.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), remoteAddrCtxKey, r.RemoteAddr)
+			ctx := context.WithValue(r.Context(), serverCtxKey, server)
+			ctx = context.WithValue(ctx, remoteAddrCtxKey, r.RemoteAddr)
 			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
@@ -198,6 +201,14 @@ func RemoteAddr(ctx context.Context) string {
 	raw, ok := ctx.Value(remoteAddrCtxKey).(string)
 	if !ok {
 		panic(fmt.Errorf("Invalid authentication context"))
+	}
+	return raw
+}
+
+func ForContext(ctx context.Context) *Server {
+	raw, ok := ctx.Value(serverCtxKey).(*Server)
+	if !ok {
+		panic(fmt.Errorf("Invalid server context"))
 	}
 	return raw
 }
