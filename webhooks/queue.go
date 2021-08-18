@@ -98,7 +98,7 @@ func (queue *WebhookQueue) Schedule(ctx context.Context, q sq.SelectBuilder,
 			}
 			return nil
 		}); err != nil {
-			log.Printf("Failed to enqueue %s/%s webhooks: %v", event, err)
+			log.Printf("Failed to enqueue %s/%s webhooks: %v", name, event, err)
 			return err
 		}
 
