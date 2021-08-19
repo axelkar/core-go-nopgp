@@ -41,6 +41,8 @@ func NewAuthConfig(ctx context.Context) (AuthConfig, error) {
 	case auth.AUTH_INTERNAL:
 		// TODO: Should this work?
 		panic("Internal webtoken auth is not supported")
+	case auth.AUTH_WEBHOOK:
+		panic("Recursive webhook auth is not supported")
 	}
 	panic("Unreachable")
 }
