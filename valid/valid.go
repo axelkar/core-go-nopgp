@@ -47,7 +47,7 @@ func (valid *Validation) OptionalString(name string, fn func(s string)) {
 	if o, ok := valid.input[name]; ok {
 		s, ok := o.(string)
 		valid.
-			Expect(ok, fmt.Sprintf("Expected %s to be a string", name)).
+			Expect(ok, "Expected %s to be a string", name).
 			WithField(name)
 		if ok {
 			fn(s)
@@ -55,21 +55,28 @@ func (valid *Validation) OptionalString(name string, fn func(s string)) {
 	}
 }
 
-// Asserts that a condition is true, recording a GraphQL error with the given
-// message if not.
-func (valid *Validation) Expect(cond bool, msg string) *ValidationError {
-	if cond {
-		return &ValidationError{valid: valid}
-	}
+// Creates a validation error unconditionally.
+func (valid *Validation) Error(msg string,
+	items ...interface{}) *ValidationError {
 	err := &gqlerror.Error{
 		Path:    graphql.GetPath(valid.ctx),
-		Message: msg,
+		Message: fmt.Sprintf(msg, items),
 	}
 	graphql.AddError(valid.ctx, err)
 	return &ValidationError{
 		valid: valid,
 		err:   err,
 	}
+}
+
+// Asserts that a condition is true, recording a GraphQL error with the given
+// message if not.
+func (valid *Validation) Expect(cond bool,
+	msg string, items ...interface{}) *ValidationError {
+	if cond {
+		return &ValidationError{valid: valid}
+	}
+	return valid.Error(msg, items)
 }
 
 // Associates a field name with an error.
@@ -87,9 +94,10 @@ func (err *ValidationError) WithField(field string) *ValidationError {
 // Composes another assertion onto the same validation context which initially
 // created an error. Short-circuiting is used, such that if the earlier
 // condition failed, the new condition is not considered.
-func (err *ValidationError) And(cond bool, msg string) *ValidationError {
+func (err *ValidationError) And(cond bool,
+	msg string, items ...interface{}) *ValidationError {
 	if err.err != nil {
 		return err
 	}
-	return err.valid.Expect(cond, msg)
+	return err.valid.Expect(cond, msg, items...)
 }
