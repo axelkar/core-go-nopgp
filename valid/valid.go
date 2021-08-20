@@ -47,7 +47,7 @@ func (valid *Validation) OptionalString(name string, fn func(s string)) {
 	if o, ok := valid.input[name]; ok {
 		s, ok := o.(string)
 		valid.
-			Expect(ok, fmt.Sprintf("Expected {} to be a string", name)).
+			Expect(ok, fmt.Sprintf("Expected %s to be a string", name)).
 			WithField(name)
 		if ok {
 			fn(s)
