@@ -56,6 +56,8 @@ type Server struct {
 	service string
 	queues  []*work.Queue
 	email   *work.Queue
+
+	MaxComplexity int
 }
 
 // Creates a new common server context for a SourceHut GraphQL daemon.
@@ -81,22 +83,19 @@ func (server *Server) WithSchema(
 	schema graphql.ExecutableSchema, scopes []string) *Server {
 	server.Schema = schema
 
-	var (
-		complexity int
-		err        error
-	)
+	var err error
 	if limit, ok := server.conf.Get(
 		server.service+"::api", "max-complexity"); ok {
-		complexity, err = strconv.Atoi(limit)
+		server.MaxComplexity, err = strconv.Atoi(limit)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		complexity = 250
+		server.MaxComplexity = 250
 	}
 
 	srv := handler.GraphQL(schema,
-		handler.ComplexityLimit(complexity),
+		handler.ComplexityLimit(server.MaxComplexity),
 		handler.RecoverFunc(EmailRecover),
 		handler.UploadMaxSize(1073741824)) // 1 GiB (TODO: configurable?)
 
@@ -234,6 +233,7 @@ func (server *Server) WithQueues(queues ...*work.Queue) *Server {
 	ctx = database.Context(ctx, server.db)
 	ctx = redis.Context(ctx, server.redis)
 	ctx = email.Context(ctx, server.email)
+	ctx = context.WithValue(ctx, serverCtxKey, server)
 
 	server.queues = append(server.queues, queues...)
 	for _, queue := range queues {

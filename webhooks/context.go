@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/99designs/gqlgen/complexity"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/executor"
 	"github.com/google/uuid"
@@ -64,7 +65,6 @@ func (webhook *WebhookContext) Exec(ctx context.Context,
 		return nil, err
 	}
 
-	// TODO: Set complexity limit
 	exec := executor.New(schema)
 	params := graphql.RawParams{
 		Query: sub.Query,
@@ -79,6 +79,15 @@ func (webhook *WebhookContext) Exec(ctx context.Context,
 		panic(errors)
 	}
 	rc.RecoverFunc = server.EmailRecover
+
+	op := rc.Doc.Operations.ForName(rc.OperationName)
+	complexity := complexity.Calculate(schema, op, rc.Variables)
+	srv := server.ForContext(ctx)
+	if complexity > srv.MaxComplexity {
+		// TODO: This doesn't bubble up to the user well
+		return nil, fmt.Errorf("operation has complexity %d, which exceeds the maximum of %d",
+			complexity, srv.MaxComplexity)
+	}
 
 	var resp graphql.ResponseHandler
 	ctx = graphql.WithOperationContext(ctx, rc)
