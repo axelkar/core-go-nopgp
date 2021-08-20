@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
+	"git.sr.ht/~sircmpwn/core-go/server"
 )
 
 type contextKey struct {
@@ -63,6 +64,7 @@ func (webhook *WebhookContext) Exec(ctx context.Context,
 		return nil, err
 	}
 
+	// TODO: Set complexity limit
 	exec := executor.New(schema)
 	params := graphql.RawParams{
 		Query: sub.Query,
@@ -76,8 +78,10 @@ func (webhook *WebhookContext) Exec(ctx context.Context,
 	if errors != nil {
 		panic(errors)
 	}
-	ctx = graphql.WithOperationContext(ctx, rc)
+	rc.RecoverFunc = server.EmailRecover
+
 	var resp graphql.ResponseHandler
+	ctx = graphql.WithOperationContext(ctx, rc)
 	resp, ctx = exec.DispatchOperation(ctx, rc)
 	payload, err := json.Marshal(resp(ctx))
 	if err != nil {

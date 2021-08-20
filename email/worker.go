@@ -192,12 +192,16 @@ func ForContext(ctx context.Context) *work.Queue {
 	return q
 }
 
+// Returns a context which includes the given mail worker.
+func Context(ctx context.Context, queue *work.Queue) context.Context {
+	return context.WithValue(ctx, emailCtxKey, queue)
+}
+
 // Adds HTTP middleware to provide an email work queue to this context.
-func Middleware(worker *work.Queue) func(next http.Handler) http.Handler {
+func Middleware(queue *work.Queue) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), emailCtxKey, worker)
-			r = r.WithContext(ctx)
+			r = r.WithContext(Context(r.Context(), queue))
 			next.ServeHTTP(w, r)
 		})
 	}

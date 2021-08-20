@@ -19,7 +19,7 @@ import (
 
 // Provides a graphql.RecoverFunc which will print the stack trace, and if
 // debug mode is not enabled, email it to the administrator.
-func emailRecover(ctx context.Context, _origErr interface{}) error {
+func EmailRecover(ctx context.Context, _origErr interface{}) error {
 	var (
 		ok      bool
 		origErr error

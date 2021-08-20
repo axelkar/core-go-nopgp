@@ -30,6 +30,7 @@ import (
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
 	"git.sr.ht/~sircmpwn/core-go/database"
+	"git.sr.ht/~sircmpwn/core-go/email"
 	"git.sr.ht/~sircmpwn/core-go/redis"
 )
 
@@ -54,6 +55,7 @@ type Server struct {
 	router  chi.Router
 	service string
 	queues  []*work.Queue
+	email   *work.Queue
 }
 
 // Creates a new common server context for a SourceHut GraphQL daemon.
@@ -95,14 +97,14 @@ func (server *Server) WithSchema(
 
 	srv := handler.GraphQL(schema,
 		handler.ComplexityLimit(complexity),
-		handler.RecoverFunc(emailRecover),
+		handler.RecoverFunc(EmailRecover),
 		handler.UploadMaxSize(1073741824)) // 1 GiB (TODO: configurable?)
 
-	server.router.Handle("/query", srv)
 	if config.Debug {
 		server.router.Handle("/",
 			playground.Handler("GraphQL playground", "/query"))
 	}
+	server.router.Handle("/query", srv)
 	server.router.Handle("/query/metrics", promhttp.Handler())
 	server.router.Get("/query/api-meta.json", func(w http.ResponseWriter, r *http.Request) {
 		info := struct {
@@ -133,6 +135,7 @@ type contextKey struct {
 // - PostgresSQL connection pool
 // - Redis connection
 // - Authentication middleware
+// - An email queue
 // - Standard rigging: logging, x-real-ip, instrumentation, etc
 func (server *Server) WithDefaultMiddleware() *Server {
 	pgcs, ok := server.conf.Get(server.service, "connection-string")
@@ -169,6 +172,8 @@ func (server *Server) WithDefaultMiddleware() *Server {
 		timeout = 3 * time.Second
 	}
 
+	server.email = email.NewQueue()
+
 	server.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -180,6 +185,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 		})
 	})
 	server.router.Use(config.Middleware(server.conf, server.service))
+	server.router.Use(email.Middleware(server.email))
 	server.router.Use(database.Middleware(db))
 	server.router.Use(redis.Middleware(rc))
 	server.router.Use(middleware.RealIP)
@@ -194,6 +200,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 			next.ServeHTTP(w, r)
 		})
 	})
+	server.WithQueues(server.email)
 	return server
 }
 
@@ -223,9 +230,10 @@ func (server *Server) WithMiddleware(
 // Add dowork task queues for this server to manage
 func (server *Server) WithQueues(queues ...*work.Queue) *Server {
 	ctx := context.Background()
-	ctx = config.Context(ctx, server.conf)
+	ctx = config.Context(ctx, server.conf, server.service)
 	ctx = database.Context(ctx, server.db)
 	ctx = redis.Context(ctx, server.redis)
+	ctx = email.Context(ctx, server.email)
 
 	server.queues = append(server.queues, queues...)
 	for _, queue := range queues {

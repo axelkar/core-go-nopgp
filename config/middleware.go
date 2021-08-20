@@ -16,19 +16,20 @@ type contextKey struct {
 }
 
 func Middleware(conf ini.File, service string) func(next http.Handler) http.Handler {
-	svc := service
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := Context(r.Context(), conf)
-			ctx = context.WithValue(ctx, serviceCtxKey, &svc)
+			ctx := Context(r.Context(), conf, service)
 			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func Context(ctx context.Context, conf ini.File) context.Context {
-	return context.WithValue(ctx, configCtxKey, conf)
+func Context(ctx context.Context, conf ini.File, service string) context.Context {
+	svc := service
+	ctx = context.WithValue(ctx, configCtxKey, conf)
+	ctx = context.WithValue(ctx, serviceCtxKey, &svc)
+	return ctx
 }
 
 func ForContext(ctx context.Context) ini.File {
@@ -42,7 +43,7 @@ func ForContext(ctx context.Context) ini.File {
 func ServiceName(ctx context.Context) string {
 	raw, ok := ctx.Value(serviceCtxKey).(*string)
 	if !ok {
-		panic(errors.New("Invalid config context"))
+		panic(errors.New("Invalid service config context"))
 	}
 	return *raw
 }
