@@ -693,7 +693,8 @@ func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !strings.HasPrefix(r.URL.Path, "/query") ||
-				r.URL.Path == "/query/metrics" {
+				r.URL.Path == "/query/metrics" ||
+				r.URL.Path == "/query/api-meta.json" {
 				next.ServeHTTP(w, r)
 				return
 			}
