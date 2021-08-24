@@ -50,7 +50,10 @@ func Payload(ctx context.Context) (interface{}, error) {
 func (webhook *WebhookContext) Exec(ctx context.Context,
 	schema graphql.ExecutableSchema) ([]byte, error) {
 	sub := webhook.Subscription
-	tslice, err := hex.DecodeString(sub.TokenHash)
+	if sub.AuthMethod != auth.AUTH_OAUTH2 {
+		panic("TODO")
+	}
+	tslice, err := hex.DecodeString(*sub.TokenHash)
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +61,7 @@ func (webhook *WebhookContext) Exec(ctx context.Context,
 	var tokenHash [64]byte
 	copy(tokenHash[:], tslice)
 	ctx, err = auth.WebhookAuth(ctx, webhook.User,
-		tokenHash, sub.Grants, sub.ClientID, sub.Expires)
+		tokenHash, *sub.Grants, sub.ClientID, *sub.Expires)
 	if err != nil {
 		// TODO: This codepath can occur when the token has expired, and we may
 		// want to communicate this to the user.

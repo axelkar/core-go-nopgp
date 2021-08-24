@@ -28,13 +28,15 @@ type WebhookQueue struct {
 }
 
 type WebhookSubscription struct {
-	ID        int
-	URL       string
-	Query     string
-	TokenHash string
-	Grants    string
-	ClientID  *string
-	Expires   time.Time
+	ID         int
+	URL        string
+	Query      string
+	AuthMethod string
+	TokenHash  *string
+	Grants     *string
+	ClientID   *string
+	NodeID     *string
+	Expires    *time.Time
 }
 
 // Creates a new worker for delivering webhooks. The caller must start the
@@ -125,8 +127,9 @@ func (queue *WebhookQueue) fetchSubscriptions(ctx context.Context,
 		)
 		if rows, err = q.
 			Columns("sub.id", "sub.url", "sub.query",
-				"sub.token_hash", "sub.grants", "sub.client_id",
-				"sub.expires").
+				"sub.auth_method",
+				"sub.token_hash", "sub.grants", "sub.client_id", "sub.expires",
+				"sub.node_id").
 			Where("? = ANY(sub.events)", event).
 			PlaceholderFormat(sq.Dollar).
 			RunWith(tx).
@@ -138,8 +141,9 @@ func (queue *WebhookQueue) fetchSubscriptions(ctx context.Context,
 		for rows.Next() {
 			var sub WebhookSubscription
 			if err := rows.Scan(&sub.ID, &sub.URL, &sub.Query,
-				&sub.TokenHash, &sub.Grants, &sub.ClientID,
-				&sub.Expires); err != nil {
+				&sub.AuthMethod,
+				&sub.TokenHash, &sub.Grants, &sub.ClientID, &sub.Expires,
+				&sub.NodeID); err != nil {
 				panic(err)
 			}
 			subs = append(subs, &sub)

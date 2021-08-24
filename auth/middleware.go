@@ -49,11 +49,11 @@ const (
 )
 
 const (
-	AUTH_OAUTH_LEGACY = iota
-	AUTH_OAUTH2       = iota
-	AUTH_COOKIE       = iota
-	AUTH_INTERNAL     = iota
-	AUTH_WEBHOOK      = iota
+	AUTH_OAUTH_LEGACY = "OAUTH_LEGACY"
+	AUTH_OAUTH2       = "OAUTH2"
+	AUTH_COOKIE       = "COOKIE"
+	AUTH_INTERNAL     = "INTERNAL"
+	AUTH_WEBHOOK      = "WEBHOOK"
 )
 
 type AuthContext struct {
@@ -67,7 +67,7 @@ type AuthContext struct {
 	Location         *string
 	Bio              *string
 	SuspensionNotice *string
-	AuthMethod       int
+	AuthMethod       string
 
 	// Only set for meta.sr.ht-api
 	PGPKey *string

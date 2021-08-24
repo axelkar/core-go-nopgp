@@ -9,11 +9,19 @@ import (
 	"git.sr.ht/~sircmpwn/core-go/auth"
 )
 
+// The following invariants apply to AuthConfig:
+// 1. AuthMethod will be either OAUTH2 or INTERNAL
+// 2. If OAUTH2, TokenHash, Grants, and Expires will be non-nil, and ClientID
+//    may be non-nil, and NodeID will be nil.
+// 3. If INTERNAL, TokenHash, Grants, Expires, and ClientID will be nil, and
+//    NodeID will be non-nil.
 type AuthConfig struct {
-	TokenHash string
-	Grants    string
-	ClientID  *string
-	Expires   time.Time
+	AuthMethod string
+	TokenHash  *string
+	Grants     *string
+	ClientID   *string
+	Expires    *time.Time
+	NodeID     *string
 }
 
 // Pulls auth details out of the config context and returns a structure of all
@@ -25,16 +33,21 @@ func NewAuthConfig(ctx context.Context) (AuthConfig, error) {
 	case auth.AUTH_OAUTH_LEGACY:
 		return AuthConfig{}, fmt.Errorf("Native webhooks are not supported with legacy OAuth")
 	case auth.AUTH_OAUTH2:
-		ac := AuthConfig{
-			TokenHash: hex.EncodeToString(user.TokenHash[:]),
-			Grants:    user.BearerToken.Grants,
-			Expires:   user.BearerToken.Expires.Time(),
-		}
+		tokenHash := hex.EncodeToString(user.TokenHash[:])
+		grants := user.BearerToken.Grants
+		expires := user.BearerToken.Expires.Time()
+		var clientID *string
 		if user.BearerToken.ClientID != "" {
-			clientID := user.BearerToken.ClientID
-			ac.ClientID = &clientID
+			_clientID := user.BearerToken.ClientID
+			clientID = &_clientID
 		}
-		return ac, nil
+		return AuthConfig {
+			AuthMethod: user.AuthMethod,
+			TokenHash:  &tokenHash,
+			Grants:     &grants,
+			Expires:    &expires,
+			ClientID:   clientID,
+		}, nil
 	case auth.AUTH_COOKIE:
 		// TODO: Should this work?
 		return AuthConfig{}, fmt.Errorf("Native webhooks are not supported with web authentication")
