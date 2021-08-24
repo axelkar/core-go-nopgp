@@ -19,6 +19,23 @@ func Internal(ctx context.Context, obj interface{},
 	return next(ctx)
 }
 
+func Private(ctx context.Context, obj interface{},
+	next graphql.Resolver) (interface{}, error) {
+
+	user := auth.ForContext(ctx)
+	switch user.AuthMethod {
+	case auth.AUTH_INTERNAL:
+		return next(ctx)
+	case auth.AUTH_OAUTH2:
+		if user.BearerToken.ClientID != "" {
+			return nil, fmt.Errorf("Private auth access denied")
+		}
+		return next(ctx)
+	}
+
+	return nil, fmt.Errorf("Private auth access denied")
+}
+
 func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 	scope string, kind string) (interface{}, error) {
 	authctx := auth.ForContext(ctx)
