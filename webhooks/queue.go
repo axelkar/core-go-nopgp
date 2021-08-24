@@ -251,7 +251,6 @@ func (queue *WebhookQueue) deliverPayload(ctx context.Context,
 		return err
 	}); err != nil {
 		log.Printf("Warning: webhook delivered, but updating delivery record failed: %v", err)
-		return nil
 	}
 
 	if resp.StatusCode == http.StatusBadGateway ||
