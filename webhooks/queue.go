@@ -31,12 +31,13 @@ type WebhookSubscription struct {
 	ID         int
 	URL        string
 	Query      string
+	// See AuthConfig in webhooks/config.go for an explanation of these fields
 	AuthMethod string
 	TokenHash  *string
 	Grants     *string
 	ClientID   *string
-	NodeID     *string
 	Expires    *time.Time
+	NodeID     *string
 }
 
 // Creates a new worker for delivering webhooks. The caller must start the
