@@ -60,7 +60,7 @@ func (valid *Validation) Error(msg string,
 	items ...interface{}) *ValidationError {
 	err := &gqlerror.Error{
 		Path:    graphql.GetPath(valid.ctx),
-		Message: fmt.Sprintf(msg, items),
+		Message: fmt.Sprintf(msg, items...),
 	}
 	graphql.AddError(valid.ctx, err)
 	return &ValidationError{
@@ -76,7 +76,7 @@ func (valid *Validation) Expect(cond bool,
 	if cond {
 		return &ValidationError{valid: valid}
 	}
-	return valid.Error(msg, items)
+	return valid.Error(msg, items...)
 }
 
 // Associates a field name with an error.

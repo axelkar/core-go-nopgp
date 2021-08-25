@@ -86,9 +86,11 @@ const (
 )
 
 type Grants struct {
-	all     bool
-	grants  map[string]string
-	encoded string
+	ReadOnly bool
+
+	all      bool
+	grants   map[string]string
+	encoded  string
 }
 
 func DecodeGrants(ctx context.Context, grants string) Grants {
@@ -133,6 +135,9 @@ func DecodeGrants(ctx context.Context, grants string) Grants {
 func (g *Grants) Has(grant string, mode string) bool {
 	if mode != RO && mode != RW {
 		panic("Invalid access mode")
+	}
+	if g.ReadOnly && mode == RW {
+		return false
 	}
 
 	if g.all {

@@ -667,6 +667,7 @@ func WebhookAuth(ctx context.Context, auth *AuthContext,
 	whAuth.AuthMethod = AUTH_WEBHOOK
 	whAuth.TokenHash = tokenHash
 	whAuth.Grants = DecodeGrants(ctx, grants)
+	whAuth.Grants.ReadOnly = true
 	whAuth.BearerToken = &BearerToken{}
 	if clientID != nil {
 		whAuth.BearerToken.ClientID = *clientID
