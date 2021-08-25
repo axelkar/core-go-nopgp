@@ -77,7 +77,7 @@ type AuthContext struct {
 
 	// Only filled out if AuthMethod == AUTH_OAUTH2 or AUTH_WEBHOOK
 	BearerToken *BearerToken
-	Access      map[string]string
+	Grants      Grants
 	TokenHash   [64]byte
 }
 
@@ -554,7 +554,7 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 	auth.AuthMethod = AUTH_OAUTH2
 	auth.BearerToken = bt
 	auth.TokenHash = hash
-	auth.Access = DecodeGrants(r.Context(), bt.Grants)
+	auth.Grants = DecodeGrants(r.Context(), bt.Grants)
 
 	ctx := context.WithValue(r.Context(), userCtxKey, &auth)
 	r = r.WithContext(ctx)
@@ -666,7 +666,7 @@ func WebhookAuth(ctx context.Context, auth *AuthContext,
 	whAuth := *auth
 	whAuth.AuthMethod = AUTH_WEBHOOK
 	whAuth.TokenHash = tokenHash
-	whAuth.Access = DecodeGrants(ctx, grants)
+	whAuth.Grants = DecodeGrants(ctx, grants)
 	whAuth.BearerToken = &BearerToken{}
 	if clientID != nil {
 		whAuth.BearerToken.ClientID = *clientID

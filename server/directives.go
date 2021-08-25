@@ -44,25 +44,19 @@ func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 	case auth.AUTH_INTERNAL, auth.AUTH_COOKIE:
 		return next(ctx)
 	case auth.AUTH_OAUTH_LEGACY:
-		if kind == "RO" {
+		if kind == auth.RO {
 			// Only legacy tokens with "*" scopes ever get this far
 			return next(ctx)
 		}
 	case auth.AUTH_WEBHOOK:
-		if kind != "RO" {
+		if kind != auth.RO {
 			return nil, fmt.Errorf("Access to read/write resolver denied for webhook")
 		}
 		fallthrough
 	case auth.AUTH_OAUTH2:
-		if authctx.Access == nil {
+		if authctx.Grants.Has(scope, kind) {
 			return next(ctx)
 		}
-		if access, ok := authctx.Access[scope]; !ok {
-			break
-		} else if access == "RO" && kind == "RW" {
-			break
-		}
-		return next(ctx)
 	default:
 		panic(fmt.Errorf("Unknown auth method for access check"))
 	}

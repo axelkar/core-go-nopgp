@@ -80,10 +80,25 @@ func DecodeBearerToken(token string) *BearerToken {
 	return &bt
 }
 
-func DecodeGrants(ctx context.Context, grants string) map[string]string {
+const (
+	RO = "RO"
+	RW = "RW"
+)
+
+type Grants struct {
+	all     bool
+	grants  map[string]string
+	encoded string
+}
+
+func DecodeGrants(ctx context.Context, grants string) Grants {
 	if grants == "" {
 		// All permissions
-		return nil
+		return Grants{
+			all:     true,
+			grants:  nil,
+			encoded: "",
+		}
 	}
 	accessMap := make(map[string]string)
 	for _, grant := range strings.Split(grants, " ") {
@@ -108,5 +123,32 @@ func DecodeGrants(ctx context.Context, grants string) map[string]string {
 			accessMap[scope] = access
 		}
 	}
-	return accessMap
+	return Grants{
+		all:     false,
+		grants:  accessMap,
+		encoded: grants,
+	}
+}
+
+func (g *Grants) Has(grant string, mode string) bool {
+	if mode != RO && mode != RW {
+		panic("Invalid access mode")
+	}
+
+	if g.all {
+		return true
+	}
+
+	if access, ok := g.grants[grant]; !ok {
+		return false
+	} else {
+		if mode == RO {
+			return true
+		}
+		return mode == access
+	}
+}
+
+func (g *Grants) Encode() string {
+	return g.encoded
 }
