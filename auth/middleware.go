@@ -83,7 +83,11 @@ type AuthContext struct {
 
 func authError(w http.ResponseWriter, reason string, code int) {
 	gqlerr := gqlerror.Errorf("Authentication error: %s", reason)
-	b, err := json.Marshal(gqlerr)
+	b, err := json.Marshal(struct {
+		Errors []*gqlerror.Error `json:"errors"`
+	} {
+		Errors: []*gqlerror.Error{gqlerr},
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -708,7 +712,7 @@ func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
 
 			auth := r.Header.Get("Authorization")
 			if auth == "" {
-				authError(w, `Authorization header is required. Expected 'Authorization: Bearer <token>'`, http.StatusUnauthorized)
+				authError(w, `Authorization header is required. Expected 'Authorization: Bearer [token]'`, http.StatusUnauthorized)
 				return
 			}
 
