@@ -14,8 +14,8 @@ import (
 
 	"git.sr.ht/~sircmpwn/dowork"
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/google/uuid"
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/crypto"
@@ -28,9 +28,9 @@ type WebhookQueue struct {
 }
 
 type WebhookSubscription struct {
-	ID         int
-	URL        string
-	Query      string
+	ID    int
+	URL   string
+	Query string
 	// See AuthConfig in webhooks/config.go for an explanation of these fields
 	AuthMethod string
 	TokenHash  *string
@@ -120,7 +120,7 @@ func (queue *WebhookQueue) fetchSubscriptions(ctx context.Context,
 	var subs []*WebhookSubscription
 	if err := database.WithTx(ctx, &sql.TxOptions{
 		Isolation: 0,
-		ReadOnly: true,
+		ReadOnly:  true,
 	}, func(tx *sql.Tx) error {
 		var (
 			err  error

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	gomail "net/mail"
 	"runtime"
 	"strings"
-	gomail "net/mail"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/emersion/go-message/mail"

@@ -7,9 +7,9 @@ import (
 	"net/mail"
 	"strconv"
 
+	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
-	_ "github.com/emersion/go-message/charset"
 
 	"git.sr.ht/~sircmpwn/core-go/config"
 )

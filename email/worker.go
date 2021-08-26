@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"git.sr.ht/~sircmpwn/dowork"
+	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-message/mail"
 	"github.com/emersion/go-pgpmail"
 	"golang.org/x/crypto/openpgp"
-	_ "github.com/emersion/go-message/charset"
 
 	"git.sr.ht/~sircmpwn/core-go/config"
 )

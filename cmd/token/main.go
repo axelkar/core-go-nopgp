@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"git.sr.ht/~sircmpwn/core-go/auth"
 	"git.sr.ht/~sircmpwn/core-go/config"
 	"git.sr.ht/~sircmpwn/core-go/crypto"
-	"git.sr.ht/~sircmpwn/core-go/auth"
 )
 
 func main() {

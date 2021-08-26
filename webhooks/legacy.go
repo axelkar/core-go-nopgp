@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"git.sr.ht/~sircmpwn/dowork"
-	"github.com/google/uuid"
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 
 	"git.sr.ht/~sircmpwn/core-go/crypto"
 	"git.sr.ht/~sircmpwn/core-go/database"

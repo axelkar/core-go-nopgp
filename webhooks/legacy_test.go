@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/stretchr/testify/assert"
 	"github.com/vaughan0/go-ini"
-	sq "github.com/Masterminds/squirrel"
 
 	"git.sr.ht/~sircmpwn/core-go/crypto"
 	"git.sr.ht/~sircmpwn/core-go/database"
@@ -39,7 +39,7 @@ type argContains struct {
 	matches []string
 }
 
-func ArgMatchesAll(matches... string) *argContains {
+func ArgMatchesAll(matches ...string) *argContains {
 	return &argContains{matches}
 }
 
@@ -100,7 +100,7 @@ func TestDelivery(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"sub.id", "sub.created", "sub.url", "sub.events",
 		}).AddRow(1337, time.Now().UTC(),
-			srv.URL + "/webhook", "profile:update")).
+						srv.URL+"/webhook", "profile:update")).
 		WithArgs(42, sqlmock.AnyArg()) // Any => events LIKE %profile:update%
 	mock.ExpectCommit()
 
@@ -132,7 +132,7 @@ func TestDelivery(t *testing.T) {
 				"X-Webhook-Delivery",
 			), // Final request headers
 			4096).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	ctx = database.Context(context.Background(), db)

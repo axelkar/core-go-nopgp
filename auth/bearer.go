@@ -88,9 +88,9 @@ const (
 type Grants struct {
 	ReadOnly bool
 
-	all      bool
-	grants   map[string]string
-	encoded  string
+	all     bool
+	grants  map[string]string
+	encoded string
 }
 
 func DecodeGrants(ctx context.Context, grants string) Grants {

@@ -38,10 +38,10 @@ func LoadConfig(defaultAddr string) ini.File {
 	}
 
 	for _, path := range []string{
-			"config.ini",
-			"../config.ini",
-			"/etc/sr.ht/config.ini",
-		} {
+		"config.ini",
+		"../config.ini",
+		"/etc/sr.ht/config.ini",
+	} {
 		config, err = ini.LoadFile(path)
 		if err == nil {
 			break

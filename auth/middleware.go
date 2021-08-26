@@ -85,7 +85,7 @@ func authError(w http.ResponseWriter, reason string, code int) {
 	gqlerr := gqlerror.Errorf("Authentication error: %s", reason)
 	b, err := json.Marshal(struct {
 		Errors []*gqlerror.Error `json:"errors"`
-	} {
+	}{
 		Errors: []*gqlerror.Error{gqlerr},
 	})
 	if err != nil {

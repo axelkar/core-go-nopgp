@@ -41,7 +41,7 @@ func NewAuthConfig(ctx context.Context) (AuthConfig, error) {
 			_clientID := user.BearerToken.ClientID
 			clientID = &_clientID
 		}
-		return AuthConfig {
+		return AuthConfig{
 			AuthMethod: user.AuthMethod,
 			TokenHash:  &tokenHash,
 			Grants:     &grants,

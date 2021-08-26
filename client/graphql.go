@@ -50,7 +50,7 @@ func Execute(ctx context.Context, username string, svc string,
 		Name:     username,
 		ClientID: config.ServiceName(ctx),
 		// TODO: Populate this:
-		NodeID:   "core-go",
+		NodeID: "core-go",
 	}
 	authBlob, err := json.Marshal(&auth)
 	if err != nil {
