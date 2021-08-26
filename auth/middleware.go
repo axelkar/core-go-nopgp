@@ -256,7 +256,7 @@ type InternalAuth struct {
 	NodeID string `json:"node_id"`
 
 	// Only used by specific meta.sr.ht routes
-	OAuthClientUUID string `json:"oauth_client_id",omit-empty`
+	OAuthClientUUID string `json:"oauth_client_id,omit-empty"`
 }
 
 func internalAuth(internalNet []*net.IPNet, payload []byte,
