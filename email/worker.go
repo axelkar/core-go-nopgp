@@ -34,7 +34,7 @@ func NewTask(msg *bytes.Buffer, rcpts []string) *work.Task {
 	return work.NewTask(func(ctx context.Context) error {
 		err := Send(ctx, msg, rcpts)
 		if err != nil {
-			log.Printf("Error sending mail: %e", err)
+			log.Printf("Error sending mail: %v", err)
 		}
 		return err
 	}).Retries(10).After(func(ctx context.Context, task *work.Task) {

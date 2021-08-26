@@ -205,7 +205,7 @@ func deliverPayload(ctx context.Context, name, url string,
 		http.MethodPost, url, bytes.NewReader(payload))
 	defer cancel()
 	if err != nil {
-		return fmt.Errorf("http.NewRequestWithContext: %v: %e",
+		return fmt.Errorf("http.NewRequestWithContext: %v: %w",
 			err, work.ErrDoNotReattempt)
 	}
 
@@ -231,7 +231,7 @@ func deliverPayload(ctx context.Context, name, url string,
 	reader := io.LimitReader(resp.Body, 65536) // No more than 64 KiB
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("Error reading response body: %v: %e",
+		return fmt.Errorf("Error reading response body: %v: %w",
 			err, work.ErrDoNotReattempt)
 	}
 

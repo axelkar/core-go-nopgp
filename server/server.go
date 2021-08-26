@@ -154,7 +154,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	}
 	ropts, err := goRedis.ParseURL(rcs)
 	if err != nil {
-		log.Fatalf("Invalid sr.ht::redis-host in config.ini: %e", err)
+		log.Fatalf("Invalid sr.ht::redis-host in config.ini: %v", err)
 	}
 	rc := goRedis.NewClient(ropts)
 	server.redis = rc

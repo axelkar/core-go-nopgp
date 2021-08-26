@@ -209,7 +209,7 @@ func (queue *WebhookQueue) deliverPayload(ctx context.Context,
 		http.MethodPost, webhook.Subscription.URL, bytes.NewReader(payload))
 	defer cancel()
 	if err != nil {
-		return fmt.Errorf("http.NewRequestWithContext: %v: %e",
+		return fmt.Errorf("http.NewRequestWithContext: %v: %w",
 			err, work.ErrDoNotReattempt)
 	}
 
@@ -232,7 +232,7 @@ func (queue *WebhookQueue) deliverPayload(ctx context.Context,
 	reader := io.LimitReader(resp.Body, 262144) // No more than 256 KiB
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("Error reading response body: %v: %e",
+		return fmt.Errorf("Error reading response body: %v: %w",
 			err, work.ErrDoNotReattempt)
 	}
 

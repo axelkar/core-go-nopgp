@@ -519,7 +519,7 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 		defer wg.Done()
 		err = LookupUser(r.Context(), bt.Username, &auth)
 		if err != nil {
-			log.Printf("LookupUser: %e", err)
+			log.Printf("LookupUser: %v", err)
 			atomic.AddInt32(&tempErr, 1)
 		} else {
 			atomic.AddInt32(&res, 1)
@@ -531,7 +531,7 @@ func OAuth2(token string, hash [64]byte, w http.ResponseWriter,
 		isRevoked, err := LookupTokenRevocation(r.Context(),
 			bt.Username, hash, bt.ClientID)
 		if err != nil {
-			log.Printf("LookupTokenRevocation: %e", err)
+			log.Printf("LookupTokenRevocation: %v", err)
 			atomic.AddInt32(&tempErr, 1)
 		} else if !isRevoked {
 			atomic.AddInt32(&res, 1)

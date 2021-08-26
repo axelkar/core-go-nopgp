@@ -47,7 +47,7 @@ func (bt *BearerToken) Encode() string {
 func DecodeBearerToken(token string) *BearerToken {
 	payload, err := base64.RawStdEncoding.DecodeString(token)
 	if err != nil {
-		log.Printf("Invalid bearer token: invalid base64 %e", err)
+		log.Printf("Invalid bearer token: invalid base64: %v", err)
 		return nil
 	}
 	if len(payload) <= 32 {
@@ -66,7 +66,7 @@ func DecodeBearerToken(token string) *BearerToken {
 	var bt BearerToken
 	err = bare.Unmarshal(payload, &bt)
 	if err != nil {
-		log.Printf("Invalid bearer token: BARE unmarshal failed: %e", err)
+		log.Printf("Invalid bearer token: BARE unmarshal failed: %v", err)
 		return nil
 	}
 	if bt.Version != TokenVersion {
