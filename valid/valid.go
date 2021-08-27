@@ -36,6 +36,19 @@ func (valid *Validation) Ok() bool {
 	return len(graphql.GetErrors(valid.ctx)) == 0
 }
 
+// Fetches an item from the validation context, which must have an input
+// registered. If the field is not present, the callback is not run. Otherwise,
+// the function is called with the value for the user to conduct further
+// validation with.
+func (valid *Validation) Optional(name string, fn func(i interface{})) {
+	if valid.input == nil {
+		panic("Attempted to validate fields without input")
+	}
+	if o, ok := valid.input[name]; ok {
+		fn(o)
+	}
+}
+
 // Fetches a string from the validation context, which must have an input
 // registered. If the field is not present, the callback is not run. If
 // present, but not a string, an error is recorded. Otherwise, the function is
