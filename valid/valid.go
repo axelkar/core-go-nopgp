@@ -45,6 +45,9 @@ func (valid *Validation) Optional(name string, fn func(i interface{})) {
 		panic("Attempted to validate fields without input")
 	}
 	if o, ok := valid.input[name]; ok {
+		if o == nil {
+			return
+		}
 		fn(o)
 	}
 }
@@ -58,13 +61,22 @@ func (valid *Validation) OptionalString(name string, fn func(s string)) {
 		panic("Attempted to validate fields without input")
 	}
 	if o, ok := valid.input[name]; ok {
-		s, ok := o.(string)
-		valid.
-			Expect(ok, "Expected %s to be a string", name).
-			WithField(name)
-		if ok {
-			fn(s)
+		if o == nil {
+			return
 		}
+		var val string
+		switch s := o.(type) {
+		case string:
+			val = s
+		case *string:
+			val = *s
+		default:
+			valid.
+				Error("Expected %s to be a string", name).
+				WithField(name)
+			return
+		}
+		fn(val)
 	}
 }
 
