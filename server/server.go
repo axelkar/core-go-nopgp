@@ -187,10 +187,10 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	server.router.Use(email.Middleware(server.email))
 	server.router.Use(database.Middleware(db))
 	server.router.Use(redis.Middleware(rc))
+	server.router.Use(auth.Middleware(server.conf, apiconf))
 	server.router.Use(middleware.RealIP)
 	server.router.Use(middleware.Logger)
 	server.router.Use(middleware.Timeout(timeout))
-	server.router.Use(auth.Middleware(server.conf, apiconf))
 	server.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := context.WithValue(r.Context(), serverCtxKey, server)
