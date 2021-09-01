@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
 	gomail "net/mail"
@@ -68,6 +69,10 @@ func EmailRecover(ctx context.Context, _origErr interface{}) error {
 
 	quser := auth.ForContext(ctx)
 	octx := graphql.GetOperationContext(ctx)
+	vars, err := json.Marshal(octx.Variables)
+	if err != nil {
+		vars = []byte{}[:]
+	}
 	reader := strings.NewReader(
 		fmt.Sprintf(`Error occured processing GraphQL request:
 
@@ -77,9 +82,14 @@ When running the following query on behalf of %s <%s>:
 
 %s
 
+With these variables:
+
+%s
+
 The following stack trace was produced:
 
-%s`, origErr, quser.Username, quser.Email, octx.RawQuery, string(stack[:i])))
+%s`, origErr, quser.Username, quser.Email, octx.RawQuery,
+	string(vars), string(stack[:i])))
 
 	email.EnqueueStd(ctx, header, reader, nil)
 	return fmt.Errorf("internal system error")
