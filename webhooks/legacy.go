@@ -49,7 +49,7 @@ func NewLegacyQueue() *LegacyQueue {
 //
 // Name shall be the prefix of the webhook tables, e.g. "user" for
 // "user_webhook_{delivery,subscription}".
-func (lq *LegacyQueue) Schedule(q sq.SelectBuilder,
+func (lq *LegacyQueue) Schedule(ctx context.Context, q sq.SelectBuilder,
 	name, event string, payload []byte) {
 	// The following tasks are done during this process:
 	//
@@ -59,16 +59,16 @@ func (lq *LegacyQueue) Schedule(q sq.SelectBuilder,
 	//
 	// The first two steps are done in this task, then N tasks are created for
 	// step 3 where N = number of subscriptions.
+	subs, err := fetchSubscriptions(ctx, q, event)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(subs) == 0 {
+		return
+	}
+
 	task := work.NewTask(func(ctx context.Context) error {
-		subs, err := fetchSubscriptions(ctx, q, event)
-		if err != nil {
-			return err
-		}
-
-		if len(subs) == 0 {
-			return nil
-		}
-
 		tasks := make([]*work.Task, len(subs))
 		if err := database.WithTx(ctx, nil, func(tx *sql.Tx) error {
 			var err error
