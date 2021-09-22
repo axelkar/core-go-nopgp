@@ -2,13 +2,14 @@ package server
 
 import (
 	"context"
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
-	gomail "net/mail"
 	"runtime"
 	"strings"
+	gomail "net/mail"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/emersion/go-message/mail"
@@ -67,14 +68,23 @@ func EmailRecover(ctx context.Context, _origErr interface{}) error {
 	addr := mail.Address(*rcpt)
 	header.SetAddressList("To", []*mail.Address{&addr})
 
-	quser := auth.ForContext(ctx)
-	octx := graphql.GetOperationContext(ctx)
-	vars, err := json.Marshal(octx.Variables)
-	if err != nil {
-		vars = []byte{}[:]
-	}
-	reader := strings.NewReader(
-		fmt.Sprintf(`Error occured processing GraphQL request:
+	var reader io.Reader
+	func() {
+		defer func() {
+			if err := recover(); err != nil {
+				reader = strings.NewReader(fmt.Sprintf(`An error occured outside of the GraphQL context:
+
+				%s`, string(stack[:i])))
+			}
+		}()
+		quser := auth.ForContext(ctx)
+		octx := graphql.GetOperationContext(ctx)
+		vars, err := json.Marshal(octx.Variables)
+		if err != nil {
+			vars = []byte{}[:]
+		}
+		reader = strings.NewReader(
+			fmt.Sprintf(`Error occured processing GraphQL request:
 
 %v
 
@@ -89,7 +99,8 @@ With these variables:
 The following stack trace was produced:
 
 %s`, origErr, quser.Username, quser.Email, octx.RawQuery,
-	string(vars), string(stack[:i])))
+		string(vars), string(stack[:i])))
+	}()
 
 	email.EnqueueStd(ctx, header, reader, nil)
 	return fmt.Errorf("internal system error")
