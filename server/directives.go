@@ -9,6 +9,16 @@ import (
 	"git.sr.ht/~sircmpwn/core-go/auth"
 )
 
+func AnonInternal(ctx context.Context, obj interface{},
+	next graphql.Resolver) (interface{}, error) {
+
+	if auth.ForContext(ctx).AuthMethod != auth.AUTH_ANON_INTERNAL {
+		return nil, fmt.Errorf("Internal auth access denied")
+	}
+
+	return next(ctx)
+}
+
 func Internal(ctx context.Context, obj interface{},
 	next graphql.Resolver) (interface{}, error) {
 

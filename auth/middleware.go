@@ -49,15 +49,18 @@ const (
 )
 
 const (
-	AUTH_OAUTH_LEGACY = "OAUTH_LEGACY"
-	AUTH_OAUTH2       = "OAUTH2"
-	AUTH_COOKIE       = "COOKIE"
-	AUTH_INTERNAL     = "INTERNAL"
-	AUTH_WEBHOOK      = "WEBHOOK"
+	AUTH_OAUTH_LEGACY  = "OAUTH_LEGACY"
+	AUTH_OAUTH2        = "OAUTH2"
+	AUTH_COOKIE        = "COOKIE"
+	AUTH_INTERNAL      = "INTERNAL"
+	AUTH_ANON_INTERNAL = "ANON_INTERNAL"
+	AUTH_WEBHOOK       = "WEBHOOK"
 )
 
 type AuthContext struct {
 	AuthMethod       string
+
+	// Only filled out for non-anonymous authentication
 	UserID           int
 	Created          time.Time
 	Updated          time.Time
@@ -299,22 +302,21 @@ func internalAuth(internalNet []*net.IPNet, payload []byte,
 	var auth *AuthContext
 	if internalAuth.OAuthClientUUID != "" {
 		auth, err = authForOAuthClient(r.Context(), internalAuth.OAuthClientUUID)
+		auth.AuthMethod = AUTH_INTERNAL
 	} else if internalAuth.Name != "" {
 		auth, err = authForUsername(r.Context(), internalAuth.Name)
+		auth.AuthMethod = AUTH_INTERNAL
 	} else {
 		// Using anonymous internal auth. This is only used in one specific
-		// situation: registering for a new account
-		//
-		// This will leave a lot of stuff unset in the auth context, which can
-		// cause problems if not properly accounted for.
+		// situation: registering for a new account.
 		auth = &AuthContext{}
+		auth.AuthMethod = AUTH_ANON_INTERNAL
 	}
 	if err != nil {
 		authError(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
-	auth.AuthMethod = AUTH_INTERNAL
 	auth.InternalAuth = internalAuth
 
 	ctx := context.WithValue(r.Context(), userCtxKey, auth)
