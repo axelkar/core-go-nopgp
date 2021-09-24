@@ -82,17 +82,11 @@ func TestDelivery(t *testing.T) {
 		}))
 	defer srv.Close()
 
-	queue := NewLegacyQueue()
-	q := sq.
-		Select().
-		From("user_webhook_subscription sub").
-		Where(`sub.user_id = ?`, 42)
-	queue.Schedule(q, "user", "profile:update", []byte(`{"hello": "world"}`))
-
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		panic(err)
 	}
+	ctx := database.Context(context.Background(), db)
 
 	// Lookup phase
 	mock.ExpectBegin()
@@ -104,13 +98,19 @@ func TestDelivery(t *testing.T) {
 		WithArgs(42, sqlmock.AnyArg()) // Any => events LIKE %profile:update%
 	mock.ExpectCommit()
 
+	queue := NewLegacyQueue()
+	q := sq.
+		Select().
+		From("user_webhook_subscription sub").
+		Where(`sub.user_id = ?`, 42)
+	queue.Schedule(ctx, q, "user", "profile:update", []byte(`{"hello": "world"}`))
+
 	// Schedule phase
 	mock.ExpectBegin()
 	mock.ExpectQuery(`INSERT INTO user_webhook_delivery`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(4096))
 	mock.ExpectCommit()
 
-	ctx := database.Context(context.Background(), db)
 	queue.Queue.Dispatch(ctx)
 
 	assert.Nil(t, mock.ExpectationsWereMet())
