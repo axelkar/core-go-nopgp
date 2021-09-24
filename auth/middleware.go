@@ -57,6 +57,7 @@ const (
 )
 
 type AuthContext struct {
+	AuthMethod       string
 	UserID           int
 	Created          time.Time
 	Updated          time.Time
@@ -67,7 +68,6 @@ type AuthContext struct {
 	Location         *string
 	Bio              *string
 	SuspensionNotice *string
-	AuthMethod       string
 
 	// Only set for meta.sr.ht-api
 	PGPKey *string
@@ -299,8 +299,15 @@ func internalAuth(internalNet []*net.IPNet, payload []byte,
 	var auth *AuthContext
 	if internalAuth.OAuthClientUUID != "" {
 		auth, err = authForOAuthClient(r.Context(), internalAuth.OAuthClientUUID)
-	} else {
+	} else if internalAuth.Name != "" {
 		auth, err = authForUsername(r.Context(), internalAuth.Name)
+	} else {
+		// Using anonymous internal auth. This is only used in one specific
+		// situation: registering for a new account
+		//
+		// This will leave a lot of stuff unset in the auth context, which can
+		// cause problems if not properly accounted for.
+		auth = &AuthContext{}
 	}
 	if err != nil {
 		authError(w, err.Error(), http.StatusForbidden)
