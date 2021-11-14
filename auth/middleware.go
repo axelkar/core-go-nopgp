@@ -302,10 +302,14 @@ func internalAuth(internalNet []*net.IPNet, payload []byte,
 	var auth *AuthContext
 	if internalAuth.OAuthClientUUID != "" {
 		auth, err = authForOAuthClient(r.Context(), internalAuth.OAuthClientUUID)
-		auth.AuthMethod = AUTH_INTERNAL
+		if err == nil {
+			auth.AuthMethod = AUTH_INTERNAL
+		}
 	} else if internalAuth.Name != "" {
 		auth, err = authForUsername(r.Context(), internalAuth.Name)
-		auth.AuthMethod = AUTH_INTERNAL
+		if err == nil {
+			auth.AuthMethod = AUTH_INTERNAL
+		}
 	} else {
 		// Using anonymous internal auth. This is only used in one specific
 		// situation: registering for a new account.
