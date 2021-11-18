@@ -12,7 +12,7 @@ require (
 	github.com/emersion/go-message v0.13.1-0.20201112194930-f77964fe28bd
 	github.com/emersion/go-pgpmail v0.1.0
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
-	github.com/emersion/go-smtp v0.14.0
+	github.com/emersion/go-smtp v0.15.1-0.20211103212524-30169acc42e7
 	github.com/emersion/go-textwrapper v0.0.0-20200911093747-65d896831594 // indirect
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
 	github.com/go-chi/chi v4.1.2+incompatible
