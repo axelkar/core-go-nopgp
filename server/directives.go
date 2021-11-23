@@ -34,7 +34,7 @@ func Private(ctx context.Context, obj interface{},
 
 	user := auth.ForContext(ctx)
 	switch user.AuthMethod {
-	case auth.AUTH_INTERNAL:
+	case auth.AUTH_INTERNAL, auth.AUTH_COOKIE:
 		return next(ctx)
 	case auth.AUTH_OAUTH2:
 		if user.BearerToken.ClientID != "" {
