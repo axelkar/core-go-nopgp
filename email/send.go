@@ -64,7 +64,7 @@ func mailSetup(ctx context.Context) (*smtp.Client, *mail.Address, error) {
 	if authtype, ok := conf.Get("mail", "smtp-auth"); ok {
 		switch authtype {
 		case "none", "plain":
-			mailconf.enctype = authtype
+			mailconf.authtype = authtype
 		default:
 			panic(fmt.Errorf("Invalid SMTP configuration value for [smtp-auth]"))
 		}
