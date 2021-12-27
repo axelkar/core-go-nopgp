@@ -80,6 +80,34 @@ func (valid *Validation) OptionalString(name string, fn func(s string)) {
 	}
 }
 
+// Fetches a boolean from the validation context, which must have an input
+// registered. If the field is not present, the callback is not run. If
+// present, but not a boolean, an error is recorded. Otherwise, the function is
+// called with the boolean for the user to conduct further validation with.
+func (valid *Validation) OptionalBool(name string, fn func(b bool)) {
+	if valid.input == nil {
+		panic("Attempted to validate fields without input")
+	}
+	if o, ok := valid.input[name]; ok {
+		if o == nil {
+			return
+		}
+		var val bool
+		switch b := o.(type) {
+		case bool:
+			val = b
+		case *bool:
+			val = *b
+		default:
+			valid.
+				Error("Expected %s to be a bool", name).
+				WithField(name)
+			return
+		}
+		fn(val)
+	}
+}
+
 // Creates a validation error unconditionally.
 func (valid *Validation) Error(msg string,
 	items ...interface{}) *ValidationError {
