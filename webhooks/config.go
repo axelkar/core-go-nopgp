@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"git.sr.ht/~sircmpwn/core-go/auth"
+	sq "github.com/Masterminds/squirrel"
 )
 
 // The following invariants apply to AuthConfig:
@@ -58,4 +59,22 @@ func NewAuthConfig(ctx context.Context) (AuthConfig, error) {
 		panic("Recursive webhook auth is not supported")
 	}
 	panic("Unreachable")
+}
+
+// Returns an SQL expression to filter webhooks for the authenticated user.
+func FilterWebhooks(ctx context.Context) (sq.Sqlizer, error) {
+	ac, err := NewAuthConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if ac.ClientID != nil {
+		// XXX: Should we maybe return all webhooks configured by client ID?
+		return sq.And{
+			sq.Expr(`NOW() at time zone 'utc' < expires`),
+			sq.Expr(`token_hash = ?`, ac.TokenHash),
+			sq.Expr(`client_id = ?`, *ac.ClientID),
+		}, nil
+	} else {
+		return sq.Expr(`NOW() at time zone 'utc' < expires`), nil
+	}
 }
