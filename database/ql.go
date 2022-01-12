@@ -90,7 +90,11 @@ func Columns(ctx context.Context, m Model) []string {
 	}
 
 	for _, field := range m.Fields().Anonymous() {
-		columns = append(columns, WithAlias(m.Alias(), field.SQL))
+		alias := m.Alias()
+		if alias == "" {
+			alias = m.Table()
+		}
+		columns = append(columns, WithAlias(alias, field.SQL))
 	}
 
 	return columns
