@@ -58,7 +58,7 @@ const (
 )
 
 type AuthContext struct {
-	AuthMethod       string
+	AuthMethod string
 
 	// Only filled out for non-anonymous authentication
 	UserID           int

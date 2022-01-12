@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	gomail "net/mail"
 	"runtime"
 	"strings"
-	gomail "net/mail"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/emersion/go-message/mail"
@@ -99,7 +99,7 @@ With these variables:
 The following stack trace was produced:
 
 %s`, origErr, quser.Username, quser.Email, octx.RawQuery,
-		string(vars), string(stack[:i])))
+				string(vars), string(stack[:i])))
 	}()
 
 	email.EnqueueStd(ctx, header, reader, nil)
