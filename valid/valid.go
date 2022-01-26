@@ -91,6 +91,34 @@ func (valid *Validation) OptionalString(name string, fn func(s string)) {
 	}
 }
 
+// Fetches a nullable string from the validation context, which must have an
+// input registered. If the field is not present, the callback is not run. If
+// present, but null, the function is called with null set to true. Otherwise,
+// the function is called with the string for the user to conduct further
+// validation with.
+func (valid *Validation) NullableString(name string, fn func(s *string)) {
+	if valid.input == nil {
+		panic("Attempted to validate fields without input")
+	}
+	if o, ok := valid.input[name]; ok {
+		var val *string
+		if o != nil {
+			switch s := o.(type) {
+			case string:
+				val = &s
+			case *string:
+				val = s
+			default:
+				valid.
+					Error("Expected %s to be a string", name).
+					WithField(name)
+				return
+			}
+		}
+		fn(val)
+	}
+}
+
 // Fetches a boolean from the validation context, which must have an input
 // registered. If the field is not present, the callback is not run. If
 // present, but not a boolean, an error is recorded. Otherwise, the function is
