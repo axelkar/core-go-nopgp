@@ -101,49 +101,7 @@ func authError(w http.ResponseWriter, reason string, code int) {
 
 func authForUsername(ctx context.Context, username string) (*AuthContext, error) {
 	var auth AuthContext
-	if err := database.WithTx(ctx, &sql.TxOptions{
-		Isolation: 0,
-		ReadOnly:  true,
-	}, func(tx *sql.Tx) error {
-		var (
-			err  error
-			rows *sql.Rows
-		)
-		query := database.
-			Select(ctx, []string{
-				`u.id`, `u.username`,
-				`u.created`, `u.updated`,
-				`u.email`,
-				`u.user_type`,
-				`u.url`, `u.location`, `u.bio`,
-				`u.suspension_notice`,
-			}).
-			From(`"user" u`).
-			Where(`u.username = ?`, username)
-		if rows, err = query.RunWith(tx).Query(); err != nil {
-			panic(err)
-		}
-		defer rows.Close()
-
-		if !rows.Next() {
-			if err := rows.Err(); err != nil {
-				panic(err)
-			}
-			return fmt.Errorf("Authenticating for unknown user %s", username)
-		}
-		if err := rows.Scan(&auth.UserID, &auth.Username, &auth.Created,
-			&auth.Updated, &auth.Email, &auth.UserType, &auth.URL, &auth.Location,
-			&auth.Bio, &auth.SuspensionNotice); err != nil {
-			panic(err)
-		}
-		if rows.Next() {
-			if err := rows.Err(); err != nil {
-				panic(err) // Invariant
-			}
-			panic(errors.New("Multiple matching user accounts; invariant broken"))
-		}
-		return nil
-	}); err != nil {
+	if err := LookupUser(ctx, username, &auth); err != nil {
 		return nil, err
 	}
 

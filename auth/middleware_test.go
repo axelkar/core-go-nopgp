@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vaughan0/go-ini"
 
+	"git.sr.ht/~sircmpwn/core-go/config"
 	"git.sr.ht/~sircmpwn/core-go/crypto"
 	"git.sr.ht/~sircmpwn/core-go/database"
 )
@@ -185,7 +186,10 @@ func dbctx() (context.Context, sqlmock.Sqlmock) {
 	if err != nil {
 		panic(err)
 	}
-	ctx := database.Context(context.Background(), db)
+	ctx := config.Context(
+		database.Context(context.Background(), db),
+		nil, "git.sr.ht",
+	)
 	return ctx, mock
 }
 
