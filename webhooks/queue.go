@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"git.sr.ht/~sircmpwn/dowork"
+	work "git.sr.ht/~sircmpwn/dowork"
 	"github.com/99designs/gqlgen/graphql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -63,56 +63,61 @@ func NewQueue(schema graphql.ExecutableSchema) *WebhookQueue {
 // the webhook resolvers.
 func (queue *WebhookQueue) Schedule(ctx context.Context, q sq.SelectBuilder,
 	name, event string, payloadUUID uuid.UUID, payload interface{}) {
-	user := auth.ForContext(ctx)
+	err := queue.schedule(ctx, q, name, event, payloadUUID, payload)
+	if err != nil {
+		log.Printf("Failed to enqueue webhook deliveries: %v", err)
+	}
+}
+
+func (queue *WebhookQueue) schedule(ctx context.Context, q sq.SelectBuilder,
+	name, event string, payloadUUID uuid.UUID, payload interface{}) error {
 	// The following tasks are done during this process:
 	//
 	// 1. Fetch subscription details from the database
 	// 2. Prepare deliveries and create delivery records
 	// 3. Deliver the webhooks
 	//
-	// The first two steps are done in this task, then N tasks are created for
+	// The first two steps are done synchronously, then N tasks are created for
 	// step 3 where N = number of subscriptions.
-	task := work.NewTask(func(ctx context.Context) error {
-		ctx = Context(ctx, payload)
-		subs, err := queue.fetchSubscriptions(ctx, q, event)
-		if err != nil {
-			return err
-		}
-		if len(subs) == 0 {
-			return nil
-		}
-
-		tasks := make([]*work.Task, len(subs))
-		if err := database.WithTx(ctx, nil, func(tx *sql.Tx) error {
-			var err error
-			for i, sub := range subs {
-				webhook := WebhookContext{
-					Name:         name,
-					Event:        event,
-					User:         user,
-					Payload:      payload,
-					PayloadUUID:  payloadUUID,
-					Subscription: sub,
-				}
-				tasks[i], err = queue.queueStage2(ctx, tx, &webhook)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}); err != nil {
-			log.Printf("Failed to enqueue %s/%s webhooks: %v", name, event, err)
-			return err
-		}
-
-		for _, task := range tasks {
-			queue.Queue.Enqueue(task)
-		}
-		log.Printf("Enqueued %s/%s webhook delivery for %d subscriptions",
-			name, event, len(subs))
+	user := auth.ForContext(ctx)
+	ctx = Context(ctx, payload)
+	subs, err := queue.fetchSubscriptions(ctx, q, event)
+	if err != nil {
+		return err
+	}
+	if len(subs) == 0 {
 		return nil
-	})
-	queue.Queue.Enqueue(task)
+	}
+
+	tasks := make([]*work.Task, len(subs))
+	if err := database.WithTx(ctx, nil, func(tx *sql.Tx) error {
+		var err error
+		for i, sub := range subs {
+			webhook := WebhookContext{
+				Name:         name,
+				Event:        event,
+				User:         user,
+				Payload:      payload,
+				PayloadUUID:  payloadUUID,
+				Subscription: sub,
+			}
+			tasks[i], err = queue.queueStage2(ctx, tx, &webhook)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		log.Printf("Failed to enqueue %s/%s webhooks: %v", name, event, err)
+		return err
+	}
+
+	for _, task := range tasks {
+		queue.Queue.Enqueue(task)
+	}
+	log.Printf("Enqueued %s/%s webhook delivery for %d subscriptions",
+		name, event, len(subs))
+	return nil
 }
 
 func (queue *WebhookQueue) fetchSubscriptions(ctx context.Context,
