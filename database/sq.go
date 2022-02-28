@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	sq "github.com/Masterminds/squirrel"
 )
@@ -104,63 +103,4 @@ func Select(ctx context.Context, cols ...interface{}) sq.SelectBuilder {
 		}
 	}
 	return q
-}
-
-// Prepares an UPDATE statement which applies the changes in the input map to
-// the given model.
-func Apply(m Model, input map[string]interface{}) sq.UpdateBuilder {
-	// XXX: This relies on the GraphQL validator to prevent the user from
-	// updating columns they're not supposed to. Risky?
-	table := m.Table()
-	if m.Alias() != "" {
-		table += " " + m.Alias()
-	}
-	update := sq.Update(table).PlaceholderFormat(sq.Dollar)
-
-	defer func() {
-		// Some weird reflection errors don't get properly logged if they're
-		// caught at a higher level.
-		if err := recover(); err != nil {
-			fmt.Printf("%v\n", err)
-			panic(err)
-		}
-	}()
-
-	for field, value := range input {
-		fields, ok := m.Fields().GQL(field)
-		if !ok {
-			continue
-		}
-		if len(fields) != 1 {
-			panic(fmt.Errorf("Apply cannot be used with composite fields"))
-		}
-		f := fields[0]
-
-		var (
-			pv reflect.Value = reflect.Indirect(reflect.ValueOf(f.Ptr))
-			rv reflect.Value = reflect.ValueOf(value)
-		)
-		if pv.Type().Kind() == reflect.Ptr {
-			if !rv.IsValid() {
-				pv.Set(reflect.Zero(pv.Type()))
-				update = update.Set(WithAlias(m.Alias(), f.SQL), nil)
-			} else {
-				if !pv.Elem().IsValid() {
-					pv.Set(reflect.New(pv.Type().Elem()))
-				}
-				reflect.Indirect(pv).Set(reflect.Indirect(rv))
-				update = update.Set(WithAlias(m.Alias(), f.SQL),
-					reflect.Indirect(rv).Interface())
-			}
-		} else {
-			if !rv.IsValid() {
-				panic(fmt.Errorf("Invariant violated (unsetting non-nullable field)"))
-			} else {
-				pv.Set(rv)
-				update = update.Set(WithAlias(m.Alias(), f.SQL), rv.Interface())
-			}
-		}
-	}
-
-	return update
 }
