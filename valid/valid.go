@@ -19,6 +19,17 @@ type ValidationError struct {
 }
 
 // Returns a new GraphQL error attached to the given field.
+func Error(ctx context.Context, field string, msg string) error {
+	return &gqlerror.Error{
+		Message: msg,
+		Path:    graphql.GetPath(ctx),
+		Extensions: map[string]interface{}{
+			"field": field,
+		},
+	}
+}
+
+// Returns a new GraphQL error attached to the given field.
 func Errorf(ctx context.Context, field string, msg string, items ...interface{}) error {
 	return &gqlerror.Error{
 		Message: fmt.Sprintf(msg, items...),
