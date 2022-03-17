@@ -53,6 +53,30 @@ func Enqueue(ctx context.Context, msg *bytes.Buffer, rcpts []string) {
 	ForContext(ctx).Enqueue(NewTask(msg, rcpts))
 }
 
+func prepareEncrypted(rcptKey *string, header mail.Header,
+	buf *bytes.Buffer, signed *openpgp.Entity) (io.WriteCloser, error) {
+	keyring, err := openpgp.ReadArmoredKeyRing(strings.NewReader(*rcptKey))
+	if err != nil {
+		return nil, err
+	}
+	if len(keyring) != 1 {
+		return nil, errors.New("Expected user PGP key to contain one key")
+	}
+	rcptEntity := keyring[0]
+
+	return pgpmail.Encrypt(buf, header.Header.Header,
+		[]*openpgp.Entity{rcptEntity}, signed, nil)
+}
+
+func prepareSigned(header mail.Header, buf *bytes.Buffer,
+	signed *openpgp.Entity) (io.WriteCloser, error) {
+	result, err := pgpmail.Sign(buf, header.Header.Header, signed, nil)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // Updates an email with the standard SourceHut headers, signs and optionally
 // encrypts it, and then queues it for delivery.
 //
@@ -137,29 +161,23 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 	)
 
 	if rcptKey != nil {
-		keyring, err = openpgp.ReadArmoredKeyRing(strings.NewReader(*rcptKey))
-		if err != nil {
-			log.Fatal(err)
-		}
-		if len(keyring) != 1 {
-			return errors.New("Expected user PGP key to contain one key")
-		}
-		rcptEntity := keyring[0]
-
-		cleartext, err = pgpmail.Encrypt(&buf, header.Header.Header,
-			[]*openpgp.Entity{rcptEntity}, entity, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer cleartext.Close()
-	} else {
-		cleartext, err = pgpmail.Sign(&buf, header.Header.Header,
-			entity, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer cleartext.Close()
+		cleartext, err = prepareEncrypted(rcptKey, header, &buf, entity)
 	}
+	// Fall back to unencrypted email if encryption did not work
+	// TODO should we add the error message to the email?
+	if rcptKey == nil || err != nil {
+		if err != nil {
+			buf.Reset()
+			log.Printf("Encrypting mail to %s failed: %s",
+				strings.Join(rcpts, ", "), err.Error())
+		}
+
+		cleartext, err = prepareSigned(header, &buf, entity)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	defer cleartext.Close()
 
 	var inlineHeader mail.Header
 	inlineHeader.SetContentType("text/plain", nil)
