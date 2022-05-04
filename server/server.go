@@ -13,14 +13,14 @@ import (
 	"strconv"
 	"time"
 
-	"git.sr.ht/~sircmpwn/dowork"
+	work "git.sr.ht/~sircmpwn/dowork"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/99designs/gqlgen/handler"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	goRedis "github.com/go-redis/redis/v8"
-	"github.com/kavu/go_reuseport"
+	reuseport "github.com/kavu/go_reuseport"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -55,7 +55,7 @@ type Server struct {
 	router  chi.Router
 	service string
 	queues  []*work.Queue
-	email   *work.Queue
+	email   *email.Queue
 
 	MaxComplexity int
 }
@@ -171,7 +171,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 		timeout = 3 * time.Second
 	}
 
-	server.email = email.NewQueue()
+	server.email = email.NewQueue(server.conf)
 
 	server.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +199,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 			next.ServeHTTP(w, r)
 		})
 	})
-	server.WithQueues(server.email)
+	server.WithQueues(server.email.Queue)
 	return server
 }
 

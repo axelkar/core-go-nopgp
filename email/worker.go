@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,13 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"git.sr.ht/~sircmpwn/dowork"
+	work "git.sr.ht/~sircmpwn/dowork"
 	"github.com/ProtonMail/go-crypto/openpgp"
 	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-message/mail"
 	"github.com/emersion/go-pgpmail"
-
-	"git.sr.ht/~sircmpwn/core-go/config"
+	"github.com/vaughan0/go-ini"
 )
 
 var emailCtxKey = &contextKey{"email"}
@@ -46,11 +44,6 @@ func NewTask(msg *bytes.Buffer, rcpts []string) *work.Task {
 				strings.Join(rcpts, ", "), task.Attempts(), task.Result())
 		}
 	})
-}
-
-// Enqueues an email for sending with the default parameters.
-func Enqueue(ctx context.Context, msg *bytes.Buffer, rcpts []string) {
-	ForContext(ctx).Enqueue(NewTask(msg, rcpts))
 }
 
 func prepareEncrypted(rcptKey *string, header mail.Header,
@@ -81,29 +74,13 @@ func prepareSigned(header mail.Header, buf *bytes.Buffer,
 // encrypts it, and then queues it for delivery.
 //
 // Senders should fill in at least the To and Subject headers, and the message
-// body. Message-ID, Date, From, and Reply-To will be added here.
+// body. Message-ID, Date, From, and Reply-To will also be added if they are not
+// already present.
 func EnqueueStd(ctx context.Context, header mail.Header,
 	bodyReader io.Reader, rcptKey *string) error {
 
-	// XXX: Do we really need to load all this shit every time we send an email
-	conf := config.ForContext(ctx)
-	smtpFrom, ok := conf.Get("mail", "smtp-from")
-	if !ok {
-		panic(errors.New("Expected [mail]smtp-from in config"))
-	}
-	ownerName, ok := conf.Get("sr.ht", "owner-name")
-	if !ok {
-		panic(errors.New("Expected [sr.ht]owner-name in config"))
-	}
-	ownerEmail, ok := conf.Get("sr.ht", "owner-email")
-	if !ok {
-		panic(errors.New("Expected [sr.ht]owner-email in config"))
-	}
+	queue := ForContext(ctx)
 
-	from, err := header.AddressList("From")
-	if err != nil {
-		return err
-	}
 	to, err := header.AddressList("To")
 	if err != nil {
 		return err
@@ -111,12 +88,6 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 	cc, err := header.AddressList("Cc")
 	if err != nil {
 		return err
-	}
-
-	if addr, err := mail.ParseAddress(smtpFrom); err == nil {
-		from = append(from, addr)
-	} else {
-		panic(err)
 	}
 
 	var rcpts []string
@@ -127,32 +98,17 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 		rcpts = append(rcpts, addr.Address)
 	}
 
-	header.GenerateMessageID()
-	header.SetDate(time.Now().UTC())
-	header.SetAddressList("From", from)
-	header.Header.SetText("Reply-To",
-		fmt.Sprintf("%s <%s>", ownerName, ownerEmail))
-
-	privKeyPath, ok := conf.Get("mail", "pgp-privkey")
-	if !ok {
-		panic(errors.New("Expected [sr.ht]owner-email in config"))
+	if !header.Has("Message-Id") {
+		header.GenerateMessageID()
 	}
-	privKeyFile, err := os.Open(privKeyPath)
-	if err != nil {
-		panic(err)
+	if !header.Has("Date") {
+		header.SetDate(time.Now().UTC())
 	}
-	defer privKeyFile.Close()
-
-	keyring, err := openpgp.ReadArmoredKeyRing(privKeyFile)
-	if err != nil {
-		panic(err)
+	if !header.Has("From") {
+		header.SetAddressList("From", []*mail.Address{queue.smtpFrom})
 	}
-	if len(keyring) != 1 {
-		panic(errors.New("Expected site PGP key to contain one key"))
-	}
-	entity := keyring[0]
-	if entity.PrivateKey == nil || entity.PrivateKey.Encrypted {
-		panic(errors.New("Failed to load private key for email signature"))
+	if !header.Has("Reply-To") {
+		header.SetAddressList("Reply-To", []*mail.Address{queue.ownerAddress})
 	}
 
 	var (
@@ -161,7 +117,7 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 	)
 
 	if rcptKey != nil {
-		cleartext, err = prepareEncrypted(rcptKey, header, &buf, entity)
+		cleartext, err = prepareEncrypted(rcptKey, header, &buf, queue.entity)
 	}
 	// Fall back to unencrypted email if encryption did not work
 	// TODO should we add the error message to the email?
@@ -172,7 +128,7 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 				strings.Join(rcpts, ", "), err.Error())
 		}
 
-		cleartext, err = prepareSigned(header, &buf, entity)
+		cleartext, err = prepareSigned(header, &buf, queue.entity)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -192,18 +148,74 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 		log.Fatal(err)
 	}
 
-	Enqueue(ctx, &buf, rcpts)
+	queue.Queue.Enqueue(NewTask(&buf, rcpts))
 	return nil
 }
 
+type Queue struct {
+	*work.Queue
+	smtpFrom     *mail.Address
+	ownerAddress *mail.Address
+	entity       *openpgp.Entity
+}
+
 // Creates a new email processing queue.
-func NewQueue() *work.Queue {
-	return work.NewQueue("email")
+func NewQueue(conf ini.File) *Queue {
+	smtpFrom, ok := conf.Get("mail", "smtp-from")
+	if !ok {
+		panic("Expected [mail]smtp-from in config")
+	}
+	ownerName, ok := conf.Get("sr.ht", "owner-name")
+	if !ok {
+		panic("Expected [sr.ht]owner-name in config")
+	}
+	ownerEmail, ok := conf.Get("sr.ht", "owner-email")
+	if !ok {
+		panic("Expected [sr.ht]owner-email in config")
+	}
+	addr, err := mail.ParseAddress(smtpFrom)
+	if err != nil {
+		panic(err)
+	}
+	ownerAddr := &mail.Address{
+		Name:    ownerName,
+		Address: ownerEmail,
+	}
+
+	privKeyPath, ok := conf.Get("mail", "pgp-privkey")
+	if !ok {
+		panic("Expected [mail]pgp-privkey in config")
+	}
+
+	privKeyFile, err := os.Open(privKeyPath)
+	if err != nil {
+		panic(err)
+	}
+	defer privKeyFile.Close()
+
+	keyring, err := openpgp.ReadArmoredKeyRing(privKeyFile)
+	if err != nil {
+		panic(err)
+	}
+	if len(keyring) != 1 {
+		panic("Expected site PGP key to contain one key")
+	}
+	entity := keyring[0]
+	if entity.PrivateKey == nil || entity.PrivateKey.Encrypted {
+		panic("Failed to load private key for email signature")
+	}
+
+	return &Queue{
+		Queue:        work.NewQueue("email"),
+		smtpFrom:     addr,
+		ownerAddress: ownerAddr,
+		entity:       entity,
+	}
 }
 
 // Returns the email worker for this context.
-func ForContext(ctx context.Context) *work.Queue {
-	q, ok := ctx.Value(emailCtxKey).(*work.Queue)
+func ForContext(ctx context.Context) *Queue {
+	q, ok := ctx.Value(emailCtxKey).(*Queue)
 	if !ok {
 		panic(errors.New("No email worker for this context"))
 	}
@@ -211,12 +223,12 @@ func ForContext(ctx context.Context) *work.Queue {
 }
 
 // Returns a context which includes the given mail worker.
-func Context(ctx context.Context, queue *work.Queue) context.Context {
+func Context(ctx context.Context, queue *Queue) context.Context {
 	return context.WithValue(ctx, emailCtxKey, queue)
 }
 
 // Adds HTTP middleware to provide an email work queue to this context.
-func Middleware(queue *work.Queue) func(next http.Handler) http.Handler {
+func Middleware(queue *Queue) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			r = r.WithContext(Context(r.Context(), queue))
