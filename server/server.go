@@ -193,8 +193,16 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	server.router.Use(middleware.Timeout(timeout))
 	server.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var err error
+			addr := r.RemoteAddr
+			if net.ParseIP(addr) == nil {
+				addr, _, err = net.SplitHostPort(addr)
+				if err != nil {
+					panic(fmt.Errorf("Invalid remote address: %s", r.RemoteAddr))
+				}
+			}
 			ctx := context.WithValue(r.Context(), serverCtxKey, server)
-			ctx = context.WithValue(ctx, remoteAddrCtxKey, r.RemoteAddr)
+			ctx = context.WithValue(ctx, remoteAddrCtxKey, addr)
 			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
@@ -203,6 +211,8 @@ func (server *Server) WithDefaultMiddleware() *Server {
 	return server
 }
 
+// RemoteAddr returns the remote address for this context. It is guaranteed to
+// be valid input for `net.ParseIP()`.
 func RemoteAddr(ctx context.Context) string {
 	raw, ok := ctx.Value(remoteAddrCtxKey).(string)
 	if !ok {
