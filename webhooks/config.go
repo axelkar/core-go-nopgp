@@ -63,6 +63,7 @@ func NewAuthConfig(ctx context.Context) (AuthConfig, error) {
 
 // Returns an SQL expression to filter webhooks for the authenticated user.
 func FilterWebhooks(ctx context.Context) (sq.Sqlizer, error) {
+	user := auth.ForContext(ctx)
 	ac, err := NewAuthConfig(ctx)
 	if err != nil {
 		return nil, err
@@ -73,8 +74,12 @@ func FilterWebhooks(ctx context.Context) (sq.Sqlizer, error) {
 			sq.Expr(`NOW() at time zone 'utc' < expires`),
 			sq.Expr(`token_hash = ?`, ac.TokenHash),
 			sq.Expr(`client_id = ?`, *ac.ClientID),
+			sq.Expr(`user_id = ?`, user.UserID),
 		}, nil
 	} else {
-		return sq.Expr(`NOW() at time zone 'utc' < expires`), nil
+		return sq.And{
+			sq.Expr(`NOW() at time zone 'utc' < expires`),
+			sq.Expr(`user_id = ?`, user.UserID),
+		}, nil
 	}
 }
