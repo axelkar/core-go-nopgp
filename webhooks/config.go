@@ -11,11 +11,11 @@ import (
 )
 
 // The following invariants apply to AuthConfig:
-// 1. AuthMethod will be either OAUTH2 or INTERNAL
-// 2. If OAUTH2, TokenHash, Grants, and Expires will be non-nil, and ClientID
-//    may be non-nil, and NodeID will be nil.
-// 3. If INTERNAL, TokenHash, Grants, Expires, and ClientID will be nil, and
-//    NodeID will be non-nil.
+//  1. AuthMethod will be either OAUTH2 or INTERNAL
+//  2. If OAUTH2, TokenHash, Grants, and Expires will be non-nil, and ClientID
+//     may be non-nil, and NodeID will be nil.
+//  3. If INTERNAL, TokenHash, Grants, Expires, and ClientID will be nil, and
+//     NodeID will be non-nil.
 type AuthConfig struct {
 	AuthMethod string
 	TokenHash  *string
