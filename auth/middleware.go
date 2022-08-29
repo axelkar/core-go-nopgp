@@ -337,7 +337,6 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 			INSERT INTO "user" (
 				created,
 				updated,
-				id,
 				username,
 				email,
 				user_type,
@@ -349,7 +348,7 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 			VALUES (
 				NOW() at time zone 'utc',
 				NOW() at time zone 'utc',
-				$1, $2, $3, $4, $5, $6, $7, $8
+				$1, $2, $3, $4, $5, $6, $7
 			)
 			ON CONFLICT DO NOTHING
 			RETURNING
@@ -363,8 +362,8 @@ func FetchMetaProfile(ctx context.Context, username string, user *AuthContext) e
 				location,
 				bio,
 				suspension_notice;`,
-			profile.ID, profile.Username, profile.Email, ut, profile.URL,
-			profile.Location, profile.Bio, profile.SuspensionNotice)
+			&profile.Username, &profile.Email, &ut, &profile.URL,
+			&profile.Location, &profile.Bio, &profile.SuspensionNotice)
 
 		// TODO: Register webhooks
 		if err := row.Scan(&user.UserID, &user.Created, &user.Updated,
