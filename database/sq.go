@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	sq "github.com/Masterminds/squirrel"
 )
@@ -103,4 +104,33 @@ func Select(ctx context.Context, cols ...interface{}) sq.SelectBuilder {
 		}
 	}
 	return q
+}
+
+func SelectAll(m Model) sq.SelectBuilder {
+	mf := m.Fields()
+	mf.buildCache()
+	var cols []string
+	for col, fields := range mf.bySQL {
+		for _, _ = range fields {
+			cols = append(cols, WithAlias(m.Alias(), col))
+		}
+	}
+	sort.Strings(cols)
+	q := sq.Select().PlaceholderFormat(sq.Dollar)
+	return q.Columns(cols...)
+}
+
+func ScanAll(m Model) []interface{} {
+	fms := m.Fields().All()
+	sort.Slice(fms, func(a, b int) bool {
+		return fms[a].SQL < fms[b].SQL
+	})
+
+	var fields []interface{}
+	for _, f := range fms {
+		if f.SQL != "" {
+			fields = append(fields, f.Ptr)
+		}
+	}
+	return fields
 }
