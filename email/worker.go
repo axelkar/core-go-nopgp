@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -83,11 +84,11 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 
 	to, err := header.AddressList("To")
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid To header field: %v", err)
 	}
 	cc, err := header.AddressList("Cc")
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid Cc header field: %v", err)
 	}
 
 	var rcpts []string
@@ -130,7 +131,7 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 
 		cleartext, err = prepareSigned(header, &buf, queue.entity)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Signing mail failed: %v", err)
 		}
 	}
 	defer cleartext.Close()
@@ -189,20 +190,20 @@ func NewQueue(conf ini.File) *Queue {
 
 	privKeyFile, err := os.Open(privKeyPath)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("Failed to open [mail]pgp-privkey: %v", err))
 	}
 	defer privKeyFile.Close()
 
 	keyring, err := openpgp.ReadArmoredKeyRing(privKeyFile)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("Failed to read PGP key ring from [mail]pgp-privkey: %v", err))
 	}
 	if len(keyring) != 1 {
-		panic("Expected site PGP key to contain one key")
+		panic("Expected [mail]pgp-privkey to contain one key")
 	}
 	entity := keyring[0]
 	if entity.PrivateKey == nil || entity.PrivateKey.Encrypted {
-		panic("Failed to load private key for email signature")
+		panic("Failed to load [mail]pgp-privkey for email signature")
 	}
 
 	return &Queue{
