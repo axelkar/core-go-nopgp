@@ -20,7 +20,7 @@ require (
 	github.com/google/uuid v1.0.0
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/kavu/go_reuseport v1.5.0
-	github.com/lib/pq v1.8.0
+	github.com/lib/pq v1.10.7
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/procfs v0.7.3 // indirect
