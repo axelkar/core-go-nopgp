@@ -149,8 +149,7 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 		log.Fatal(err)
 	}
 
-	queue.Queue.Enqueue(NewTask(&buf, rcpts))
-	return nil
+	return queue.Enqueue(NewTask(&buf, rcpts))
 }
 
 type Queue struct {
