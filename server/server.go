@@ -148,7 +148,9 @@ func (server *Server) WithDefaultMiddleware() *Server {
 		log.Fatalf("Failed to open a database connection: %v", err)
 	}
 	server.db = db
-	collectors.NewDBStatsCollector(db, server.service)
+
+	collector := collectors.NewDBStatsCollector(db, server.service)
+	prometheus.DefaultRegisterer.Register(collector)
 
 	rcs, ok := server.conf.Get("sr.ht", "redis-host")
 	if !ok {
