@@ -23,6 +23,7 @@ import (
 	reuseport "github.com/kavu/go_reuseport"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/vaughan0/go-ini"
@@ -147,6 +148,7 @@ func (server *Server) WithDefaultMiddleware() *Server {
 		log.Fatalf("Failed to open a database connection: %v", err)
 	}
 	server.db = db
+	collectors.NewDBStatsCollector(db, server.service)
 
 	rcs, ok := server.conf.Get("sr.ht", "redis-host")
 	if !ok {
