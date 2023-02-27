@@ -99,6 +99,11 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 		rcpts = append(rcpts, addr.Address)
 	}
 
+	// Disallow content headers, signing/encrypting will change this
+	header.Del("Content-Transfer-Encoding")
+	header.Del("Content-Type")
+	header.Del("Content-Disposition")
+
 	if !header.Has("Message-Id") {
 		header.GenerateMessageID()
 	}
