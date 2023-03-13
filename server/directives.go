@@ -67,6 +67,8 @@ func Access(ctx context.Context, obj interface{}, next graphql.Resolver,
 		if authctx.Grants.Has(scope, kind) {
 			return next(ctx)
 		}
+	case auth.AUTH_ANON_INTERNAL:
+		return nil, fmt.Errorf("Access denied for internal anonymous auth")
 	default:
 		panic(fmt.Errorf("Unknown auth method for access check"))
 	}
