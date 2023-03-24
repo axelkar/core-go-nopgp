@@ -18,7 +18,6 @@ require (
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/google/uuid v1.0.0
-	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/kavu/go_reuseport v1.5.0
 	github.com/lib/pq v1.10.7
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
