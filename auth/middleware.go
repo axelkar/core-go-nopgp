@@ -695,8 +695,8 @@ func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
 			}
 
 			var bearer string
-			switch z[0] {
-			case "Bearer":
+			switch strings.ToLower(z[0]) {
+			case "bearer":
 				token := []byte(z[1])
 				if oauth2BearerRegex.Match(token) {
 					hash := sha512.Sum512(token)
@@ -712,7 +712,7 @@ func Middleware(conf ini.File, apiconf string) func(http.Handler) http.Handler {
 				}
 				authError(w, "Invalid OAuth bearer token", http.StatusBadRequest)
 				return
-			case "Internal":
+			case "internal":
 				payload := []byte(z[1])
 				internalAuth(internalNet, payload, w, r, next)
 				return
