@@ -8,15 +8,12 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	work "git.sr.ht/~sircmpwn/dowork"
-	"github.com/ProtonMail/go-crypto/openpgp"
 	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-message/mail"
-	"github.com/emersion/go-pgpmail"
 	"github.com/vaughan0/go-ini"
 )
 
@@ -47,32 +44,7 @@ func NewTask(msg *bytes.Buffer, rcpts []string) *work.Task {
 	})
 }
 
-func prepareEncrypted(rcptKey *string, header mail.Header,
-	buf *bytes.Buffer, signed *openpgp.Entity) (io.WriteCloser, error) {
-	keyring, err := openpgp.ReadArmoredKeyRing(strings.NewReader(*rcptKey))
-	if err != nil {
-		return nil, err
-	}
-	if len(keyring) != 1 {
-		return nil, errors.New("Expected user PGP key to contain one key")
-	}
-	rcptEntity := keyring[0]
-
-	return pgpmail.Encrypt(buf, header.Header.Header,
-		[]*openpgp.Entity{rcptEntity}, signed, nil)
-}
-
-func prepareSigned(header mail.Header, buf *bytes.Buffer,
-	signed *openpgp.Entity) (io.WriteCloser, error) {
-	result, err := pgpmail.Sign(buf, header.Header.Header, signed, nil)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// Updates an email with the standard SourceHut headers, signs and optionally
-// encrypts it, and then queues it for delivery.
+// Updates an email with the standard SourceHut headers and then queues it for delivery.
 //
 // Senders should fill in at least the To and Subject headers, and the message
 // body. Message-ID, Date, From, and Reply-To will also be added if they are not
@@ -119,31 +91,10 @@ func EnqueueStd(ctx context.Context, header mail.Header,
 
 	var (
 		buf       bytes.Buffer
-		cleartext io.WriteCloser
 	)
 
-	if rcptKey != nil {
-		cleartext, err = prepareEncrypted(rcptKey, header, &buf, queue.entity)
-	}
-	// Fall back to unencrypted email if encryption did not work
-	// TODO should we add the error message to the email?
-	if rcptKey == nil || err != nil {
-		if err != nil {
-			buf.Reset()
-			log.Printf("Encrypting mail to %s failed: %s",
-				strings.Join(rcpts, ", "), err.Error())
-		}
-
-		cleartext, err = prepareSigned(header, &buf, queue.entity)
-		if err != nil {
-			log.Fatalf("Signing mail failed: %v", err)
-		}
-	}
-	defer cleartext.Close()
-
-	var inlineHeader mail.Header
-	inlineHeader.SetContentType("text/plain", nil)
-	body, err := mail.CreateSingleInlineWriter(cleartext, inlineHeader)
+	header.SetContentType("text/plain", nil)
+	body, err := mail.CreateSingleInlineWriter(&buf, header)
 	if err != nil {
 		panic(err)
 	}
@@ -161,7 +112,6 @@ type Queue struct {
 	*work.Queue
 	smtpFrom     *mail.Address
 	ownerAddress *mail.Address
-	entity       *openpgp.Entity
 }
 
 // Creates a new email processing queue.
@@ -187,34 +137,10 @@ func NewQueue(conf ini.File) *Queue {
 		Address: ownerEmail,
 	}
 
-	privKeyPath, ok := conf.Get("mail", "pgp-privkey")
-	if !ok {
-		panic("Expected [mail]pgp-privkey in config")
-	}
-
-	privKeyFile, err := os.Open(privKeyPath)
-	if err != nil {
-		panic(fmt.Errorf("Failed to open [mail]pgp-privkey: %v", err))
-	}
-	defer privKeyFile.Close()
-
-	keyring, err := openpgp.ReadArmoredKeyRing(privKeyFile)
-	if err != nil {
-		panic(fmt.Errorf("Failed to read PGP key ring from [mail]pgp-privkey: %v", err))
-	}
-	if len(keyring) != 1 {
-		panic("Expected [mail]pgp-privkey to contain one key")
-	}
-	entity := keyring[0]
-	if entity.PrivateKey == nil || entity.PrivateKey.Encrypted {
-		panic("Failed to load [mail]pgp-privkey for email signature")
-	}
-
 	return &Queue{
 		Queue:        work.NewQueue("email"),
 		smtpFrom:     addr,
 		ownerAddress: ownerAddr,
-		entity:       entity,
 	}
 }
 

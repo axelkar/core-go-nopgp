@@ -9,9 +9,7 @@ require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/squirrel v1.4.0
-	github.com/ProtonMail/go-crypto v0.0.0-20211112122917-428f8eabeeb3
 	github.com/emersion/go-message v0.15.0
-	github.com/emersion/go-pgpmail v0.2.0
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
 	github.com/emersion/go-smtp v0.15.1-0.20211103212524-30169acc42e7
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
